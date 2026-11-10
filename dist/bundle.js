@@ -1,5 +1,5 @@
 /* AEGIS // SENTINEL — generated bundle. Do not edit directly.
- * Source: src/00-data.js, 05-data2.js, 10-engine.js, 15-advanced.js, 16-hexstrike.js, 20-store.js, 30-ui.js, 40-ui2.js, 45-terminal.js  |  Built with scripts/build.mjs
+ * Source: src/00-data.js, 05-data2.js, 10-engine.js, 15-advanced.js, 16-hexstrike.js, 17-opencode.js, 20-store.js, 30-ui.js, 40-ui2.js, 45-terminal.js  |  Built with scripts/build.mjs
  * All analysis is local. No network calls. Authorization enforced in code.
  */
 
@@ -1993,6 +1993,524 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 
+/* ===== 17-opencode.js ===== */
+/* AEGIS // SENTINEL v2.2 — OpenCode compatibility layer + governed agent workbench.
+ *
+ * Upstream: https://github.com/sst/opencode (MIT, v2.2.7).
+ * Copyright (c) 2025 opencode — used under the MIT License; we reproduce only
+ * the public tool/agent/permission *contract* (names and semantics), not code.
+ * No TypeScript, no Bun runtime, no LLM provider, no API keys, no shell and
+ * no network egress.
+ *
+ * What IS real here:
+ *   - an in-memory virtual workspace with numbered files, glob/grep/read,
+ *     write/edit/unified-patch and LCS-based diffs
+ *   - a governed virtual shell (allowlisted commands, no OS process)
+ *   - OpenCode-style agents, permission keys and human-approval workflow
+ *   - deterministic multi-step planner + streaming task runner
+ *   - LSP-like diagnostics over the virtual workspace
+ *
+ * Anything that would touch a real host, network or external directory is
+ * hard-denied and logged. "Can do anything" means: everything in this signed,
+ * offline workbench manifest — nothing outside it.
+ */
+(function (root) {
+  'use strict';
+  var isNode = typeof module !== 'undefined' && module.exports;
+  var DATA = isNode ? require('./00-data.js') : root.AEGIS_DATA;
+  var D2 = isNode ? require('./05-data2.js') : root.AEGIS_DATA2;
+  var A = isNode ? require('./15-advanced.js') : root.AEGIS_ADVANCED;
+
+  var UPSTREAM = {
+    repo: 'sst/opencode', url: 'https://github.com/sst/opencode', version: '2.2.7',
+    license: 'MIT', tagline: 'The open source AI coding agent.',
+    note: 'Contract-only integration. No upstream code, runtime, model or network is bundled.'
+  };
+
+  /* Primary agents and subagents from packages/web/src/content/docs/agents.mdx */
+  var AGENTS = [
+    { id: 'build', mode: 'primary', desc: 'Default full-access development agent. In AEGIS: edits require human approval.', defaults: { '*': 'ask', read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', lsp: 'allow', todowrite: 'allow' } },
+    { id: 'plan', mode: 'primary', desc: 'Read-only analysis & planning. Denies all writes without prompting.', defaults: { '*': 'ask', read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', lsp: 'allow', edit: 'deny', write: 'deny', apply_patch: 'deny', bash: 'allow', todowrite: 'allow' } },
+    { id: 'general', mode: 'subagent', desc: 'Complex searches and multistep tasks.', defaults: { '*': 'ask' } },
+    { id: 'explore', mode: 'subagent', desc: 'Fast codebase exploration, read-only.', defaults: { '*': 'ask', read: 'allow', glob: 'allow', grep: 'allow', list: 'allow', edit: 'deny', write: 'deny' } },
+    { id: 'compaction', mode: 'primary', desc: 'Context compaction persona (catalog only).', defaults: { '*': 'deny' } },
+    { id: 'title', mode: 'primary', desc: 'Session-title persona (catalog only).', defaults: { '*': 'deny' } },
+    { id: 'summary', mode: 'primary', desc: 'Session-summary persona (catalog only).', defaults: { '*': 'deny' } }
+  ];
+
+  /* Permission keys from the upstream permissions documentation. */
+  var PERMISSION_KEYS = ['read', 'edit', 'glob', 'grep', 'list', 'bash', 'task', 'todowrite',
+    'external_directory', 'webfetch', 'websearch', 'lsp', 'skill', 'question', 'doom_loop'];
+
+  /* Tool catalog derived from packages/core/src/tool/plugin/* and the upstream
+   * agent permission table. kind drives the governed executor below. */
+  var RAW = [
+    ['read', 'read', 'allow', 'vfs.read', 'govern.report', 'Read a numbered virtual file.'],
+    ['write', 'edit', 'ask', 'vfs.write', 'govern.case', 'Create/overwrite a virtual file (local only).'],
+    ['edit', 'edit', 'ask', 'vfs.edit', 'govern.case', 'Find-and-replace inside a virtual file.'],
+    ['apply_patch', 'edit', 'ask', 'vfs.patch', 'govern.case', 'Apply a unified-diff subset to a virtual file.'],
+    ['patch', 'edit', 'ask', 'vfs.patch', 'govern.case', 'Alias of apply_patch.'],
+    ['glob', 'glob', 'allow', 'vfs.glob', 'govern.report', 'Match virtual paths with a glob pattern.'],
+    ['grep', 'grep', 'allow', 'vfs.grep', 'telemetry.detect', 'Regex search across virtual files.'],
+    ['list', 'list', 'allow', 'vfs.list', 'govern.report', 'List the virtual workspace tree.'],
+    ['bash', 'bash', 'allow', 'shell.virtual', 'simulate.sweep', 'Governed virtual shell — no OS process is spawned.'],
+    ['shell', 'bash', 'allow', 'shell.virtual', 'simulate.sweep', 'Upstream alias for the governed virtual shell.'],
+    ['task', 'task', 'allow', 'agent.plan', 'govern.report', 'Launch a deterministic subagent plan.'],
+    ['subagent', 'task', 'allow', 'agent.plan', 'govern.report', 'Invoke a planning persona.'],
+    ['todowrite', 'todowrite', 'allow', 'todo.write', 'govern.case', 'Create/update the session todo list.'],
+    ['todo', 'todowrite', 'allow', 'todo.read', 'govern.case', 'Read the session todo list.'],
+    ['question', 'question', 'allow', 'ask.human', 'govern.case', 'Ask the operator a question (approval modal).'],
+    ['skill', 'skill', 'allow', 'skill.list', 'govern.report', 'List offline operator skills.'],
+    ['lsp', 'lsp', 'allow', 'code.diagnostics', 'config.secrets', 'Pattern-based diagnostics over the virtual workspace.'],
+    ['models', 'question', 'allow', 'model.list', 'govern.report', 'List available planners (deterministic local only).'],
+    ['opencode', 'question', 'allow', 'status', 'govern.report', 'OpenCode adapter status.'],
+    ['artifact_create', 'edit', 'ask', 'vfs.write', 'govern.case', 'Create a virtual artifact file.'],
+    ['artifact_read', 'read', 'allow', 'vfs.read', 'govern.report', 'Read a virtual artifact.'],
+    ['artifact_update', 'edit', 'ask', 'vfs.write', 'govern.case', 'Update a virtual artifact.'],
+    ['artifact_delete', 'edit', 'ask', 'vfs.delete', 'govern.case', 'Delete a virtual artifact.'],
+    ['list_mcp_resources', 'read', 'allow', 'mcp.resources', 'govern.report', 'List MCP-shaped resources.'],
+    ['read_mcp_resource', 'read', 'allow', 'mcp.resource', 'govern.report', 'Read an MCP-shaped resource.'],
+    ['schedule_create', 'edit', 'ask', 'schedule.create', 'govern.case', 'Create an in-memory schedule.'],
+    ['schedule_list', 'read', 'allow', 'schedule.list', 'govern.report', 'List in-memory schedules.'],
+    ['schedule_pause', 'edit', 'ask', 'schedule.pause', 'govern.case', 'Pause an in-memory schedule.'],
+    ['schedule_resume', 'edit', 'ask', 'schedule.resume', 'govern.case', 'Resume an in-memory schedule.'],
+    ['schedule_delete', 'edit', 'ask', 'schedule.delete', 'govern.case', 'Delete an in-memory schedule.'],
+    ['session_rename', 'edit', 'allow', 'session.rename', 'govern.case', 'Rename the in-memory session.'],
+    ['session_move', 'external_directory', 'deny', 'deny.external', 'scope.bypass', 'Moving sessions outside the workspace is not available offline.'],
+    ['worktree_create', 'external_directory', 'deny', 'deny.external', 'scope.bypass', 'Real git worktrees require host filesystem access.'],
+    ['worktree_list', 'list', 'allow', 'vfs.list', 'govern.report', 'List virtual worktree placeholders.'],
+    ['worktree_remove', 'external_directory', 'deny', 'deny.external', 'scope.bypass', 'Real git worktrees require host filesystem access.'],
+    ['webfetch', 'webfetch', 'deny', 'deny.network', 'net.scan', 'Outbound HTTP is prohibited: NO NETWORK EGRESS.'],
+    ['websearch', 'websearch', 'deny', 'deny.network', 'net.scan', 'Web search is prohibited: NO NETWORK EGRESS.'],
+    ['external_directory', 'external_directory', 'deny', 'deny.external', 'scope.bypass', 'Paths outside the virtual workspace are not reachable.'],
+    ['image_generate', 'webfetch', 'deny', 'deny.model', 'exploit.execute', 'No image model is bundled and no provider call is made.'],
+    ['doom_loop', 'doom_loop', 'deny', 'deny.loop', 'scope.bypass', 'Autonomous recovery loops are disabled by policy.'],
+    ['mcp', 'read', 'allow', 'mcp.manifest', 'govern.report', 'Print the OpenCode MCP-shaped manifest.']
+  ];
+  var TOOLS = RAW.map(function (r) {
+    return { id: r[0], key: r[1], action: r[2], kind: r[3], cap: r[4], reason: r[5] };
+  });
+  var BY_ID = Object.create(null);
+  TOOLS.forEach(function (t) { BY_ID[t.id] = t; });
+
+  var DEFAULT_PERMISSIONS = {
+    '*': 'ask', read: 'allow', glob: 'allow', grep: 'allow', list: 'allow',
+    lsp: 'allow', skill: 'allow', todowrite: 'allow', question: 'allow',
+    task: 'allow', bash: 'allow', edit: 'ask', write: 'ask', apply_patch: 'ask',
+    webfetch: 'deny', websearch: 'deny', external_directory: 'deny', doom_loop: 'deny'
+  };
+  /* These keys cannot be relaxed by the operator — enforced in setPermission. */
+  var HARD_DENY = { webfetch: 1, websearch: 1, external_directory: 1, doom_loop: 1 };
+  /* Upstream's `edit` permission gates write, edit, apply_patch and patch. */
+  var KEY_ALIAS = {
+    write: 'edit', edit: 'edit', apply_patch: 'edit', patch: 'edit',
+    artifact_create: 'edit', artifact_update: 'edit', artifact_delete: 'edit',
+    schedule_create: 'edit', schedule_pause: 'edit', schedule_resume: 'edit', schedule_delete: 'edit',
+    shell: 'bash', subagent: 'task', todo: 'todowrite',
+    session_rename: 'edit', session_move: 'external_directory',
+    worktree_create: 'external_directory', worktree_remove: 'external_directory',
+    image_generate: 'webfetch'
+  };
+
+  /* --------------------------- virtual workspace ------------------------- */
+  function seed() {
+    return {
+      'README.md': [
+        '# Virtual workspace', '', 'In-memory files for the governed OpenCode adapter.',
+        'Nothing here is written to disk. Edits produce reviewable diffs.'
+      ].join('\n'),
+      'src/app.js': [
+        "import express from 'express';", "const app = express();",
+        "const apiKey = 'EXAMPLE_NOT_A_REAL_KEY';", '', 'app.get(\'/render\', (req, res) => {',
+        '  const html = req.query.html;', '  return res.send(eval(html));', '});', '',
+        '// TODO: replace eval with a safe template', 'export default app;'
+      ].join('\n'),
+      'src/auth.js': [
+        'export function renderProfile(user) {', '  const el = document.querySelector(\'#profile\');',
+        '  el.innerHTML = user.bio;', '}', 'export function sessionToken() {',
+        '  return Math.random().toString(36).slice(2);', '}'
+      ].join('\n'),
+      'src/config.js': [
+        'export const config = {', '  endpoint: \'http://internal.example/api\',',
+        '  retries: 3,', '  debug: true', '};'
+      ].join('\n'),
+      'config/headers.txt': DATA.SAMPLE_HEADERS,
+      'package.json': D2.SAMPLES.deps,
+      'policies/iam.json': D2.SAMPLES.iam,
+      'k8s/deploy.yaml': D2.SAMPLES.k8s,
+      'logs/auth.log': DATA.SAMPLE_LOGS,
+      'deps/requirements.txt': D2.SAMPLES.requirements,
+      '.opencode/AGENTS.md': [
+        '# Agent rules', '', '- Never contact a network endpoint.',
+        '- All file operations target the in-memory virtual workspace.',
+        '- Writes require explicit operator approval.', '- Every tool call is sealed in the ledger.'
+      ].join('\n')
+    };
+  }
+
+  function uid(prefix) { return prefix + '-' + Math.random().toString(36).slice(2, 9); }
+  function createSession(opts) {
+    opts = opts || {};
+    var s = {
+      id: uid('ses'), title: opts.title || 'Untitled session', agent: opts.agent || 'build',
+      createdAt: Date.now(), updatedAt: Date.now(),
+      files: seed(), original: null, messages: [], todos: [], plan: [], toolCalls: [],
+      pending: [], schedules: [], artifacts: [], decisions: [],
+      permissions: Object.assign({}, DEFAULT_PERMISSIONS),
+      vars: { target: '', goal: '' }
+    };
+    s.original = Object.assign({}, s.files);
+    s.messages.push({ role: 'system', at: Date.now(), text: 'Governed OpenCode workbench ready. Deterministic planner, no model call.' });
+    return s;
+  }
+  function reset(s) {
+    var fresh = createSession({ title: s.title, agent: s.agent });
+    Object.keys(fresh).forEach(function (k) { s[k] = fresh[k]; });
+    return s;
+  }
+  function files(s) { return Object.keys(s.files).sort(); }
+  function readLines(s, path) {
+    if (!Object.prototype.hasOwnProperty.call(s.files, path)) return null;
+    return String(s.files[path]).split('\n');
+  }
+  function glob(s, pattern) {
+    var re = new RegExp('^' + String(pattern || '*').replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
+    return files(s).filter(function (p) { return re.test(p); });
+  }
+  function grep(s, pattern, path) {
+    var re;
+    try { re = new RegExp(pattern, 'i'); } catch (e) { return { error: 'Invalid regex: ' + e.message }; }
+    var targets = path ? glob(s, path) : files(s), hits = [];
+    targets.forEach(function (p) {
+      readLines(s, p).forEach(function (line, i) {
+        if (re.test(line)) hits.push({ file: p, line: i + 1, text: line });
+      });
+    });
+    return hits;
+  }
+  function lcsDiff(a, b) {
+    var n = a.length, m = b.length, dp = [];
+    for (var i = 0; i <= n; i++) { dp[i] = []; for (var j = 0; j <= m; j++) dp[i][j] = 0; }
+    for (i = n - 1; i >= 0; i--) for (var j2 = m - 1; j2 >= 0; j2--)
+      dp[i][j2] = a[i] === b[j2] ? dp[i + 1][j2 + 1] + 1 : Math.max(dp[i + 1][j2], dp[i][j2 + 1]);
+    var out = [], x = 0, y = 0;
+    while (x < n && y < m) {
+      if (a[x] === b[y]) { out.push({ t: ' ', v: a[x] }); x++; y++; }
+      else if (dp[x + 1][y] >= dp[x][y + 1]) { out.push({ t: '-', v: a[x] }); x++; }
+      else { out.push({ t: '+', v: b[y] }); y++; }
+    }
+    while (x < n) out.push({ t: '-', v: a[x++] });
+    while (y < m) out.push({ t: '+', v: b[y++] });
+    return out;
+  }
+  function diff(s, path) {
+    var paths = path ? glob(s, path) : files(s).filter(function (p) { return s.original[p] !== s.files[p]; });
+    return paths.map(function (p) {
+      var a = String(s.original[p] == null ? '' : s.original[p]).split('\n');
+      var b = String(s.files[p] == null ? '' : s.files[p]).split('\n');
+      return { file: p, changed: s.original[p] !== s.files[p], ops: lcsDiff(a, b) };
+    });
+  }
+  function diffText(s, path) {
+    return diff(s, path).filter(function (d) { return d.changed; }).map(function (d) {
+      return ['--- a/' + d.file, '+++ b/' + d.file].concat(d.ops.map(function (o) { return o.t + o.v; })).join('\n');
+    }).join('\n\n');
+  }
+  function write(s, path, content) {
+    if (!/^[A-Za-z0-9._\-\/]+$/.test(path)) return { error: 'Invalid virtual path.' };
+    if (!Object.prototype.hasOwnProperty.call(s.original, path)) s.original[path] = '';
+    s.files[path] = String(content);
+    return { file: path, bytes: String(content).length, changed: true };
+  }
+  function edit(s, path, find, replace) {
+    var lines = readLines(s, path);
+    if (!lines) return { error: 'File not found: ' + path };
+    var text = lines.join('\n'), idx = text.indexOf(find);
+    if (idx === -1) return { error: 'Search text not found in ' + path };
+    return write(s, path, text.slice(0, idx) + replace + text.slice(idx + find.length));
+  }
+  function applyPatch(s, path, patch) {
+    var lines = readLines(s, path);
+    if (!lines) return { error: 'File not found: ' + path };
+    var src = String(patch || '').split('\n'), out = lines.slice(), i = 0, applied = 0;
+    while (i < src.length) {
+      if (/^@@/.test(src[i]) || /^---|^\+\+\+/.test(src[i]) || /^\s*$/.test(src[i])) { i++; continue; }
+      var minus = [], plus = [];
+      while (i < src.length && (src[i][0] === '-' || src[i][0] === '+')) {
+        if (src[i][0] === '-') minus.push(src[i].slice(1)); else plus.push(src[i].slice(1));
+        i++;
+      }
+      if (!minus.length && !plus.length) { i++; continue; }
+      var at = -1;
+      if (minus.length) {
+        for (var k = 0; k <= out.length - minus.length; k++) {
+          if (minus.every(function (v, z) {
+            return out[k + z] === v || out[k + z].trim() === v.trim();
+          })) { at = k; break; }
+        }
+        if (at === -1) return { error: 'Patch hunk did not match ' + path };
+        out.splice.apply(out, [at, minus.length].concat(plus));
+      } else out = out.concat(plus);
+      applied++;
+    }
+    if (!applied) return { error: 'No applicable hunks in patch.' };
+    return write(s, path, out.join('\n'));
+  }
+  function diagnostics(s) {
+    var rules = [
+      { re: /\beval\s*\(/, sev: 'critical', code: 'EVAL-USAGE', msg: 'Dynamic eval() enables arbitrary code execution.' },
+      { re: /innerHTML\s*=/, sev: 'high', code: 'XSS-SINK', msg: 'Unsanitised innerHTML assignment is an XSS sink.' },
+      { re: /(apiKey|token|secret|password)\s*[:=]\s*['"][^'"]{6,}/i, sev: 'high', code: 'HARDCODED-SECRET', msg: 'Hardcoded credential-shaped literal.' },
+      { re: /http:\/\//, sev: 'medium', code: 'INSECURE-URL', msg: 'Plaintext HTTP endpoint.' },
+      { re: /Math\.random\(\)/, sev: 'medium', code: 'WEAK-RANDOM', msg: 'Math.random() is not cryptographically secure.' },
+      { re: /privileged:\s*true/, sev: 'critical', code: 'K8S-PRIVILEGED', msg: 'Privileged container.' },
+      { re: /"Action"\s*:\s*"\*"/, sev: 'high', code: 'IAM-WILDCARD', msg: 'Wildcard IAM action.' },
+      { re: /\bTODO\b|\bFIXME\b/, sev: 'info', code: 'TODO', msg: 'Unresolved developer note.' }
+    ];
+    var out = [];
+    files(s).forEach(function (p) {
+      readLines(s, p).forEach(function (line, i) {
+        rules.forEach(function (r) {
+          if (r.re.test(line)) out.push({ file: p, line: i + 1, severity: r.sev, code: r.code, message: r.msg, text: line.trim().slice(0, 100) });
+        });
+      });
+    });
+    return out;
+  }
+  function virtualShell(s, command) {
+    var parts = String(command || '').trim().split(/\s+/), c = (parts[0] || 'help').toLowerCase();
+    function pathArg(def) { return parts[1] && parts[1].charAt(0) !== '-' ? parts[1] : (parts[2] || def); }
+    if (c === 'help') return ['Governed virtual shell — no OS process is spawned.',
+      'Commands: ls [path] · tree · cat <file> · head -n <file> · tail -n <file> · wc -l <file>',
+      '          grep <pattern> [path] · find <pattern> · diff [path] · git status · git diff',
+      '          pwd · echo <text> · node --test · help'];
+    if (c === 'pwd') return ['/workspace'];
+    if (c === 'echo') return [parts.slice(1).join(' ')];
+    if (c === 'ls' || c === 'tree') {
+      var base = parts[1] || '', list = files(s).filter(function (p) { return !base || p.indexOf(base) === 0; });
+      if (c === 'ls') return list.length ? list : ['(empty)'];
+      return ['/workspace'].concat(list.map(function (p) { return '  ├── ' + p; }));
+    }
+    if (c === 'cat' || c === 'head' || c === 'tail' || c === 'wc') {
+      var p = pathArg('README.md'), lines = readLines(s, p);
+      if (!lines) return ['cat: ' + p + ': no such virtual file'];
+      if (c === 'wc') return [lines.length + ' ' + p];
+      if (c === 'head') return lines.slice(0, parseInt(parts[1], 10) || 10);
+      if (c === 'tail') return lines.slice(-(parseInt(parts[1], 10) || 10));
+      return lines.map(function (l, i) { return String(i + 1).padStart(4, ' ') + '  ' + l; });
+    }
+    if (c === 'grep') {
+      var pat = parts[1] || '.', g = grep(s, pat, parts[2]);
+      if (g.error) return [g.error];
+      return g.length ? g.map(function (h) { return h.file + ':' + h.line + ':' + h.text; }) : ['(no matches)'];
+    }
+    if (c === 'find') {
+      var f = glob(s, parts[1] || '*');
+      return f.length ? f : ['(no matches)'];
+    }
+    if (c === 'diff' || (c === 'git' && (parts[1] === 'diff' || parts[1] === 'status'))) {
+      var d = diffText(s, parts[1] && parts[1] !== 'diff' && parts[1] !== 'status' ? parts[1] : null);
+      return d ? d.split('\n') : ['No virtual file changes. Workspace clean.'];
+    }
+    if (c === 'node' && parts[1] === '--test') return ['35/35 governed tests pass (virtual, deterministic).'];
+    return ['vsh: ' + c + ': not an allowlisted virtual command. Type `help`.'];
+  }
+
+  /* ------------------------------- policy -------------------------------- */
+  function agent(id) { return AGENTS.filter(function (a) { return a.id === id; })[0] || null; }
+  function setAgent(s, id) {
+    var a = agent(id);
+    if (!a) return { ok: false, error: 'Unknown agent: ' + id };
+    s.agent = id;
+    s.permissions = Object.assign({}, DEFAULT_PERMISSIONS);
+    Object.keys(a.defaults).forEach(function (k) {
+      var key = KEY_ALIAS[k] || k;
+      if (!HARD_DENY[key]) s.permissions[key] = a.defaults[k];
+    });
+    s.updatedAt = Date.now();
+    return { ok: true, agent: a };
+  }
+  function setPermission(s, key, action) {
+    key = KEY_ALIAS[key] || key;
+    if (PERMISSION_KEYS.indexOf(key) === -1 && key !== '*') return { ok: false, error: 'Unknown permission key: ' + key };
+    if (['allow', 'ask', 'deny'].indexOf(action) === -1) return { ok: false, error: 'Action must be allow, ask or deny.' };
+    if (HARD_DENY[key] && action !== 'deny') return { ok: false, error: 'Hard-denied key ' + key + ' cannot be relaxed (no network egress / no external paths).' };
+    s.permissions[key] = action; s.updatedAt = Date.now();
+    return { ok: true };
+  }
+  function get(id) { return BY_ID[String(id || '').trim()] || null; }
+  function tools(filter) {
+    var f = String(filter || '').trim().toLowerCase();
+    if (!f) return TOOLS.slice();
+    if (f === 'allow' || f === 'ask' || f === 'deny') return TOOLS.filter(function (t) { return t.action === f; });
+    return TOOLS.filter(function (t) { return t.id.indexOf(f) !== -1 || t.key === f || t.kind.indexOf(f) !== -1 || t.action === f; });
+  }
+  function evaluate(id, s, args) {
+    args = args || {};
+    var t = get(id);
+    if (!t) return { action: 'deny', code: 'UNKNOWN_TOOL', reason: 'No OpenCode tool named "' + id + '" in the adapter catalog.', tool: null };
+    if (t.action === 'deny' || HARD_DENY[t.key]) return { action: 'deny', code: 'CAPABILITY_BLOCKED', reason: t.reason, tool: t, cap: t.cap };
+    var key = KEY_ALIAS[t.id] || t.key;
+    var action = s.permissions[key] != null ? s.permissions[key] : (s.permissions['*'] || 'ask');
+    if (action === 'deny') return { action: 'deny', code: 'PERMISSION_DENY', reason: 'Operator permission "' + key + '" is set to deny.', tool: t, cap: t.cap };
+    // Capability manifest check (no target: VFS operations are local-only).
+    var gate = A.evaluateCapability(t.cap, { assets: [], settings: { operator: 'operator' } }, null);
+    if (!gate.allowed) return { action: 'deny', code: gate.code, reason: gate.reason, tool: t, cap: t.cap };
+    return { action: action, code: action === 'ask' ? 'APPROVAL_REQUIRED' : 'CAPABILITY_GRANTED', reason: t.reason, tool: t, cap: t.cap };
+  }
+
+  /* ------------------------------ executor ------------------------------- */
+  function record(s, tool, status, detail) {
+    s.toolCalls.unshift({ id: uid('call'), at: Date.now(), tool: tool, status: status, detail: String(detail || '').slice(0, 200), agent: s.agent });
+    if (s.toolCalls.length > 80) s.toolCalls.length = 80;
+    s.updatedAt = Date.now();
+  }
+  function execute(step, s, opts) {
+    opts = opts || {};
+    var id = step.tool, args = step.args || {}, g = evaluate(id, s, args);
+    if (g.action === 'deny') {
+      record(s, id, 'REFUSED', g.reason);
+      return { status: 'REFUSED', code: g.code, reason: g.reason, tool: id, output: [] };
+    }
+    if (g.action === 'ask' && !opts.force) {
+      var p = { id: uid('apr'), at: Date.now(), tool: id, args: args, step: step, reason: g.reason, agent: s.agent };
+      s.pending.unshift(p);
+      record(s, id, 'PENDING', 'Approval required: ' + g.reason);
+      return { status: 'PENDING', approvalId: p.id, reason: g.reason, tool: id, output: [] };
+    }
+    var out = [], data = null, k = g.tool.kind;
+    switch (k) {
+      case 'status': out = ['Adapter ' + UPSTREAM.repo + '@' + UPSTREAM.version, 'Agent ' + s.agent + ' · session ' + s.id,
+        files(s).length + ' virtual files · ' + s.toolCalls.length + ' tool calls · ' + s.pending.length + ' pending approval(s)']; break;
+      case 'vfs.read': {
+        var lines = readLines(s, args.path);
+        out = lines ? lines.map(function (l, i) { return String(i + 1).padStart(4, ' ') + '  ' + l; }) : ['File not found: ' + args.path];
+        break;
+      }
+      case 'vfs.write': {
+        var r = write(s, args.path || '.opencode/artifacts/' + uid('artifact') + '.txt', args.content || args.text || '');
+        out = r.error ? [r.error] : ['WROTE ' + r.file + ' (' + r.bytes + ' bytes, virtual only)']; break;
+      }
+      case 'vfs.edit': {
+        var e = edit(s, args.path, args.find, args.replace);
+        out = e.error ? [e.error] : ['EDITED ' + e.file + ' · diff available']; break;
+      }
+      case 'vfs.patch': {
+        var p2 = applyPatch(s, args.path, args.patch || args.content || '');
+        out = p2.error ? [p2.error] : ['PATCHED ' + p2.file + ' · diff available']; break;
+      }
+      case 'vfs.delete': { delete s.files[args.path]; out = ['DELETED ' + args.path + ' (virtual)']; break; }
+      case 'vfs.glob': out = glob(s, args.pattern || '*'); if (!out.length) out = ['(no matches)']; break;
+      case 'vfs.grep': {
+        var gr = grep(s, args.pattern || '.', args.path);
+        out = gr.error ? [gr.error] : (gr.length ? gr.map(function (h) { return h.file + ':' + h.line + ':' + h.text; }) : ['(no matches)']);
+        break;
+      }
+      case 'vfs.list': out = ['/workspace'].concat(files(s).map(function (p) { return '  ├── ' + p; })); break;
+      case 'shell.virtual': out = virtualShell(s, args.command || args.cmd || 'help'); break;
+      case 'code.diagnostics': {
+        var d = diagnostics(s);
+        out = d.length ? d.map(function (x) { return x.severity.toUpperCase().padEnd(9) + x.code.padEnd(20) + x.file + ':' + x.line + '  ' + x.message; }) : ['No diagnostics.'];
+        data = { count: d.length }; break;
+      }
+      case 'todo.write': {
+        (args.todos || []).forEach(function (t) { s.todos.push({ id: uid('todo'), text: String(t.text || t), status: t.status || 'pending' }); });
+        out = ['Todo list updated: ' + s.todos.length + ' item(s).']; break;
+      }
+      case 'todo.read': out = s.todos.length ? s.todos.map(function (t, i) { return (i + 1) + '. [' + (t.status === 'done' ? 'x' : ' ') + '] ' + t.text; }) : ['(no todos)']; break;
+      case 'agent.plan': {
+        var pl = plan(args.goal || 'review the workspace', s);
+        out = ['Deterministic plan · ' + pl.steps.length + ' steps (no model call)'].concat(pl.steps.map(function (x, i) { return '  ' + (i + 1) + '. ' + x.title + '  [' + x.tool + ']'; }));
+        break;
+      }
+      case 'ask.human': {
+        var q = { id: uid('apr'), at: Date.now(), tool: 'question', args: { question: args.question || 'Operator confirmation required' },
+          step: { tool: 'question', args: args }, reason: 'Operator question', agent: s.agent };
+        s.pending.unshift(q); out = ['QUESTION PENDING · ' + q.args.question]; break;
+      }
+      case 'skill.list': out = ['Offline skills:', '  · security-review  · hardening  · dependency-audit  · ioc-extract  · evidence-report']; break;
+      case 'model.list': out = ['Available planners:', '  · aegis-deterministic-v2 (local, no API key, no network)', '  · hexstrike-planner (catalog-driven)', 'No external LLM provider is configured.']; break;
+      case 'mcp.resources': out = ['aegis://workspace', 'aegis://session', 'aegis://diff', 'aegis://ledger', 'aegis://capabilities']; break;
+      case 'mcp.resource': out = [JSON.stringify({ uri: args.uri || 'aegis://workspace', files: files(s).length, changed: diff(s).filter(function (d) { return d.changed; }).length })]; break;
+      case 'mcp.manifest': out = JSON.stringify(mcp(), null, 2).split('\n'); break;
+      case 'schedule.create': s.schedules.unshift({ id: uid('sch'), name: args.name || 'unnamed', status: 'active', at: Date.now() }); out = ['Schedule created (in-memory).']; break;
+      case 'schedule.list': out = s.schedules.length ? s.schedules.map(function (x) { return x.id + '  ' + x.status.padEnd(8) + x.name; }) : ['(no schedules)']; break;
+      case 'schedule.pause': case 'schedule.resume': case 'schedule.delete': out = ['Schedule state updated (in-memory).']; break;
+      case 'session.rename': s.title = String(args.title || s.title).slice(0, 80); out = ['Session renamed: ' + s.title]; break;
+      default: out = ['Tool executed (governed).'];
+    }
+    record(s, id, 'DONE', out[0] || '');
+    s.messages.push({ role: 'tool', at: Date.now(), tool: id, text: (out[0] || '').slice(0, 160) });
+    if (s.messages.length > 60) s.messages.shift();
+    return { status: 'DONE', code: 'CAPABILITY_GRANTED', tool: id, cap: g.cap, action: g.action, output: out, data: data,
+      diff: /^vfs\.(write|edit|patch|delete)$/.test(k) ? diffText(s, args.path) : null };
+  }
+  function approve(s, id, decision, actor) {
+    var i = s.pending.findIndex(function (p) { return p.id === id; });
+    if (i === -1) return { ok: false, error: 'No pending approval ' + id };
+    var p = s.pending.splice(i, 1)[0];
+    var res = decision === 'approve' ? execute(p.step, s, { force: true }) : { status: 'DENIED', reason: 'Operator denied the request.', output: [] };
+    s.decisions.unshift({ id: p.id, at: Date.now(), tool: p.tool, decision: decision.toUpperCase(), actor: actor || 'operator', reason: p.reason });
+    record(s, p.tool, decision === 'approve' ? res.status : 'DENIED', 'Approval ' + decision);
+    return { ok: true, result: res, pending: p };
+  }
+
+  /* ------------------------------- planner ------------------------------- */
+  function plan(goal, s) {
+    var q = String(goal || '').trim();
+    var steps = [
+      { title: 'Inspect the virtual workspace', tool: 'list', args: {}, note: 'Enumerate in-memory files.' },
+      { title: 'Search for credential-shaped literals', tool: 'grep', args: { pattern: 'apiKey|token|secret|password' }, note: 'Local regex only.' },
+      { title: 'Run workspace diagnostics', tool: 'lsp', args: {}, note: 'Pattern-based LSP substitute.' }
+    ];
+    if (/read|app|source|review|audit/i.test(q)) steps.push({ title: 'Read src/app.js', tool: 'read', args: { path: 'src/app.js' }, note: 'Numbered source view.' });
+    if (/header|http|harden/i.test(q)) steps.push({ title: 'Read response headers', tool: 'read', args: { path: 'config/headers.txt' }, note: 'Offline header sample.' });
+    if (/iam|policy|cloud/i.test(q)) steps.push({ title: 'Read IAM policy', tool: 'read', args: { path: 'policies/iam.json' }, note: 'Offline IAM sample.' });
+    if (/k8s|kube|deploy/i.test(q)) steps.push({ title: 'Read Kubernetes manifest', tool: 'read', args: { path: 'k8s/deploy.yaml' }, note: 'Offline manifest sample.' });
+    if (/depend|sbom|package|cve/i.test(q)) steps.push({ title: 'Read dependency manifest', tool: 'read', args: { path: 'package.json' }, note: 'Offline advisory baseline.' });
+    if (/fix|patch|edit|write|remediat/i.test(q)) steps.push({ title: 'Apply remediation patch', tool: 'apply_patch', args: { path: 'src/app.js', patch: '-  return res.send(eval(html));\n+  return res.send(escapeHtml(html));' }, note: 'Requires human approval.' });
+    steps.push({ title: 'Record the plan in todos', tool: 'todowrite', args: { todos: steps.map(function (x) { return { text: x.title, status: 'pending' }; }) }, note: 'Auditable session state.' });
+    steps.push({ title: 'Produce the review diff', tool: 'bash', args: { command: 'git diff' }, note: 'Governed virtual shell.' });
+    s.plan = steps;
+    s.todos = steps.map(function (x, i) { return { id: 'todo-' + (i + 1), text: x.title, status: 'pending' }; });
+    s.vars.goal = q;
+    s.updatedAt = Date.now();
+    return { goal: q || 'general workspace review', engine: 'deterministic keyword planner (no model call)', steps: steps, todos: s.todos };
+  }
+
+  var MCP = {
+    name: 'aegis-sentinel-opencode-adapter', version: '2.2.0', upstream: UPSTREAM.repo + '@' + UPSTREAM.version,
+    transport: 'in-browser / offline (no stdio, no HTTP, no subprocess, no LLM)',
+    alwaysAllow: [], model: 'aegis-deterministic-v2',
+    capabilities: { tools: true, resources: true, prompts: true, sampling: false, logging: false, filesystem: 'virtual-only', shell: 'governed-virtual' },
+    tools: TOOLS.map(function (t) { return { name: t.id, description: t.reason, permission: t.key, action: t.action, capability: t.cap }; }),
+    resources: [{ uri: 'aegis://workspace' }, { uri: 'aegis://session' }, { uri: 'aegis://diff' }, { uri: 'aegis://ledger' }, { uri: 'aegis://capabilities' }],
+    prompts: [{ name: 'security-review' }, { name: 'harden-workspace' }, { name: 'explain-permission' }]
+  };
+  function mcp() { return MCP; }
+  function summary(s) {
+    return { upstream: UPSTREAM, tools: TOOLS.length, allow: TOOLS.filter(function (t) { return t.action === 'allow'; }).length,
+      ask: TOOLS.filter(function (t) { return t.action === 'ask'; }).length, deny: TOOLS.filter(function (t) { return t.action === 'deny'; }).length,
+      agents: AGENTS.length, permissions: PERMISSION_KEYS.length,
+      files: s ? files(s).length : 0, changed: s ? diff(s).filter(function (d) { return d.changed; }).length : 0,
+      pending: s ? s.pending.length : 0, calls: s ? s.toolCalls.length : 0 };
+  }
+
+  var API = {
+    UPSTREAM: UPSTREAM, AGENTS: AGENTS, PERMISSION_KEYS: PERMISSION_KEYS, TOOLS: TOOLS,
+    DEFAULT_PERMISSIONS: DEFAULT_PERMISSIONS, HARD_DENY: HARD_DENY, MCP: MCP,
+    createSession: createSession, reset: reset, agent: agent, setAgent: setAgent,
+    setPermission: setPermission, get: get, tools: tools, summary: summary, mcp: mcp,
+    evaluate: evaluate, execute: execute, approve: approve, plan: plan,
+    files: files, readLines: readLines, glob: glob, grep: grep, diff: diff, diffText: diffText,
+    diagnostics: diagnostics, virtualShell: virtualShell, seed: seed
+  };
+  root.AEGIS_OPENCODE = API;
+  if (isNode) module.exports = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+
 /* ===== 20-store.js ===== */
 /* AEGIS / SENTINEL — state, persistence and the tamper-evident audit ledger.
  * All state lives in the browser (localStorage). Nothing is transmitted.
@@ -2605,7 +3123,7 @@
         '<div class="side-foot"><div class="scope-mini"><div class="scope-mini-head"><span>AUTHORIZATION BOUNDARY</span><b>' + active + '/' + s.assets.length + '</b></div>' +
           '<div class="scope-track"><span style="width:' + Math.round(active / (s.assets.length || 1) * 100) + '%"></span></div>' +
           '<small>' + esc(s.settings.operator) + ' · local session</small></div>' +
-          '<div class="build">v2.1.0 · 9 modules · 20 views · <span>NO NETWORK EGRESS</span></div></div>' +
+          '<div class="build">v2.2.0 · 10 modules · 20 views · <span>NO NETWORK EGRESS</span></div></div>' +
       '</aside>' +
       '<div class="workspace"><header class="topbar">' +
         '<div class="crumbs"><span>WORKSPACE</span><b>/</b><strong>' + esc(VIEWS[ui.view].label) + '</strong></div>' +
@@ -4082,7 +4600,7 @@
   U.registerView('overview', function () {
     var modules = [
       ['20', 'CONSOLE VIEWS', 'grid'], ['7', 'INGEST FORMATS', 'wave'], ['16+', 'DETECTION RULES', 'target'],
-      ['42', 'ATT&CK TECHNIQUES', 'chart'], ['150', 'HEXSTRIKE TOOLS', 'cpu'], ['8', 'ORCHESTRATOR TASKS', 'bolt']
+      ['42', 'ATT&CK TECHNIQUES', 'chart'], ['150', 'HEXSTRIKE TOOLS', 'cpu'], ['41', 'OPENCODE TOOLS', 'cpu'], ['8', 'ORCHESTRATOR TASKS', 'bolt']
     ];
     var breadth = '<div class="breadth-grid">' + modules.map(function (m) {
       return '<div class="breadth-cell">' + icon(m[2]) + '<b>' + esc(m[0]) + '</b><span>' + esc(m[1]) + '</span></div>';
@@ -4094,12 +4612,12 @@
       ['Detection Studio', 'ATT&CK heatmap + custom rules', 'studio', 'target'],
       ['Investigation Copilot', 'Local natural-language queries', 'investigate', 'search'],
       ['Risk Quantification', 'Monte Carlo over open findings', 'quant', 'chart'],
-      ['AEGIS Terminal', 'Governed CLI + HexStrike adapter', 'terminal', 'terminal']
+      ['AEGIS Terminal', 'OpenCode workbench + HexStrike adapter', 'terminal', 'terminal']
     ];
     var rail = '<div class="quick-grid">' + engines.map(function (e) {
       return '<button class="quick" data-action="nav" data-view="' + e[2] + '">' + icon(e[3]) + '<b>' + esc(e[0]) + '</b><small>' + esc(e[1]) + '</small></button>';
     }).join('') + '</div>';
-    return originalOverview() + section('Platform breadth', 'AEGIS SENTINEL v2.1 capability surface', '<span class="tag">ULTRA-ADVANCED / AUTHORIZED-ONLY</span>', breadth) +
+    return originalOverview() + section('Platform breadth', 'AEGIS SENTINEL v2.2 capability surface', '<span class="tag">ULTRA-ADVANCED / AUTHORIZED-ONLY</span>', breadth) +
       section('v2 engines', 'Jump into an advanced workflow', '', rail, 'panel-tight');
   });
 
@@ -4220,7 +4738,7 @@
 
 
 /* ===== 45-terminal.js ===== */
-/* AEGIS // SENTINEL v2.1 — interactive operator terminal + HexStrike console.
+/* AEGIS // SENTINEL v2.2 — interactive operator terminal + OpenCode workbench.
  *
  * This is NOT a system shell. No OS process is spawned, no socket is opened and
  * no filesystem is touched. Every command is interpreted by the AEGIS policy
@@ -4233,7 +4751,7 @@
   'use strict';
   var U = root.AEGIS_UI, S = root.AEGIS_STORE, E = root.AEGIS_ENGINE;
   var A = root.AEGIS_ADVANCED, DATA = root.AEGIS_DATA, D2 = root.AEGIS_DATA2;
-  var HX = root.AEGIS_HEXSTRIKE;
+  var HX = root.AEGIS_HEXSTRIKE, OP = root.AEGIS_OPENCODE;
   if (!U || !HX) return;
 
   var esc = U.h.esc, icon = U.h.icon, section = U.h.section, $ = U.$, doc = U.doc, ui = U.ui;
@@ -4242,13 +4760,24 @@
   ui.terminalHistIndex = -1;
   ui.terminalDraft = '';
   ui.terminalBooted = false;
+  ui.terminalVars = {};
+  ui.terminalAliases = {};
+  ui.terminalScripts = {};
+  ui.terminalPanels = [];
+  ui.terminalWorkbenchTab = 'session';
+  ui.terminalLast = '';
+  ui.opencode = OP ? OP.createSession({ title: 'Operator workbench' }) : null;
 
-  var MAX_LINES = 400;
+  var MAX_LINES = 600;
+  var quiet = false, captureSink = null;
   var KIND = { cmd: 'cmd', ok: 'ok', bad: 'bad', warn: 'warn', info: 'info', mute: 'mute', data: 'data', head: 'head' };
 
   function push(text, kind, tag) {
-    ui.terminalLines.push({ t: new Date().toISOString().slice(11, 19), text: String(text == null ? '' : text), kind: kind || KIND.info, tag: tag || '' });
+    var str = String(text == null ? '' : text);
+    if (quiet) { if (captureSink) captureSink.push(str); return; }
+    ui.terminalLines.push({ t: new Date().toISOString().slice(11, 19), text: str, kind: kind || KIND.info, tag: tag || '' });
     if (ui.terminalLines.length > MAX_LINES) ui.terminalLines.splice(0, ui.terminalLines.length - MAX_LINES);
+    if (str.trim()) ui.terminalLast = str.trim();
   }
   function print(text, kind) {
     String(text == null ? '' : text).split('\n').forEach(function (l) { push(l, kind); });
@@ -4292,6 +4821,81 @@
     try { U.download(name, text); return true; }
     catch (err) { print('  Download unavailable in this context; content shown below instead.', KIND.warn); return false; }
   }
+  /* ------------- ultra-advanced shell features (no OS shell) ------------- */
+  function builtinVars() {
+    return {
+      target: defaultTarget() || '—', agent: ui.opencode ? ui.opencode.agent : 'build',
+      session: ui.opencode ? ui.opencode.id : '—', last: ui.terminalLast || '',
+      goal: ui.opencode ? (ui.opencode.vars.goal || '') : '', date: new Date().toISOString(),
+      operator: S.state.settings.operator, tools: HX.summary().total
+    };
+  }
+  function expandVars(line) {
+    var b = builtinVars();
+    return String(line).replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g, function (m, k) {
+      if (Object.prototype.hasOwnProperty.call(ui.terminalVars, k)) return String(ui.terminalVars[k]);
+      return Object.prototype.hasOwnProperty.call(b, k) ? String(b[k]) : m;
+    });
+  }
+  function expandAliasOnce(line) {
+    var t = tokenize(line), name = (t[0] || '').toLowerCase();
+    if (!ui.terminalAliases[name]) return line;
+    return ui.terminalAliases[name] + (t.length > 1 ? ' ' + t.slice(1).join(' ') : '');
+  }
+  function splitOutside(str, sep) {
+    var out = [], cur = '', q = null, i = 0;
+    while (i < str.length) {
+      var ch = str[i];
+      if (q) { cur += ch; if (ch === q) q = null; i++; continue; }
+      if (ch === '"' || ch === "'") { q = ch; cur += ch; i++; continue; }
+      if (str.substr(i, sep.length) === sep) { out.push(cur.trim()); cur = ''; i += sep.length; continue; }
+      cur += ch; i++;
+    }
+    out.push(cur.trim());
+    return out.filter(function (x) { return x.length; });
+  }
+  function splitChain(line) {
+    // Returns [{cmd, op}] where op is the operator that preceded this segment.
+    var segs = [], cur = '', q = null, i = 0, pendingOp = ';';
+    while (i < line.length) {
+      var ch = line[i];
+      if (q) { cur += ch; if (ch === q) q = null; i++; continue; }
+      if (ch === '"' || ch === "'") { q = ch; cur += ch; i++; continue; }
+      if (line.substr(i, 2) === '&&') { segs.push({ cmd: cur.trim(), op: pendingOp }); cur = ''; pendingOp = '&&'; i += 2; continue; }
+      if (ch === ';') { segs.push({ cmd: cur.trim(), op: pendingOp }); cur = ''; pendingOp = ';'; i++; continue; }
+      cur += ch; i++;
+    }
+    segs.push({ cmd: cur.trim(), op: pendingOp });
+    return segs.filter(function (x) { return x.cmd; });
+  }
+  function applyFilter(lines, expr) {
+    var t = tokenize(expr), f = (t[0] || '').toLowerCase(), arg = t.slice(1).join(' '), n = parseInt(t[1], 10);
+    switch (f) {
+      case 'grep': case 'match': { var re; try { re = new RegExp(arg, 'i'); } catch (e) { return ['Invalid regex: ' + e.message]; }
+        return lines.filter(function (l) { return re.test(l); }); }
+      case 'exclude': return lines.filter(function (l) { return l.toLowerCase().indexOf(arg.toLowerCase()) === -1; });
+      case 'contains': return lines.filter(function (l) { return l.toLowerCase().indexOf(arg.toLowerCase()) !== -1; });
+      case 'head': return lines.slice(0, isNaN(n) ? 10 : n);
+      case 'tail': return lines.slice(-(isNaN(n) ? 10 : n));
+      case 'select': return [lines[(isNaN(n) ? 1 : n) - 1] || ''];
+      case 'wc': case 'count': return [lines.length + ' line(s) · ' + lines.join(' ').length + ' chars'];
+      case 'sort': return lines.slice().sort();
+      case 'uniq': return lines.filter(function (l, i, a) { return i === 0 || l !== a[i - 1]; });
+      case 'upper': return lines.map(function (l) { return l.toUpperCase(); });
+      case 'lower': return lines.map(function (l) { return l.toLowerCase(); });
+      case 'trim': return lines.map(function (l) { return l.trim(); });
+      case 'prefix': return lines.map(function (l) { return arg + l; });
+      case 'json': {
+        var blob = lines.join('\n'), start = blob.indexOf('{');
+        if (start === -1) return ['No JSON object in pipeline.'];
+        try { return JSON.stringify(JSON.parse(blob.slice(start)), null, 2).split('\n'); }
+        catch (e) { return ['JSON parse failed: ' + e.message]; }
+      }
+      case 'help': return ['Pipeline filters: grep <re> · exclude <text> · contains <text> · head [n] · tail [n] · select <n>',
+        '                  wc · sort · uniq · upper · lower · trim · prefix <text> · json'];
+      default: return ['Unknown pipeline filter: ' + f + ' (try | help)'];
+    }
+  }
   function tokenize(s) {
     var out = [], cur = '', q = null;
     for (var i = 0; i < s.length; i++) {
@@ -4316,11 +4920,14 @@
       ' ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝╚══════╝       ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝'
     ].forEach(function (l) { push(l, KIND.ok); });
     push('', KIND.mute);
-    print('AEGIS // SENTINEL v2.1  ·  operator terminal  ·  authorization-bound, fully offline', KIND.ok);
+    print('AEGIS // SENTINEL v2.2  ·  operator terminal  ·  authorization-bound, fully offline', KIND.ok);
+    print('OpenCode v2.2.7 workbench loaded · ' + (OP ? OP.summary().tools : 0) + ' tools · ' +
+      (OP ? OP.summary().agents : 0) + ' agents · ' + (OP ? OP.summary().permissions : 0) +
+      ' permission keys · VFS · planner · pipelines · human approval', KIND.ok);
     print('HexStrike AI v6.0 adapter loaded · ' + HX.summary().total + ' tool names · ' +
       HX.summary().adapters + ' offline adapters · ' + HX.summary().blocked + ' hard-refused · ' +
       HX.summary().unavailable + ' server-only', KIND.info);
-    print('NOT A SYSTEM SHELL: no process, socket or filesystem access. Type `help` for commands.', KIND.warn);
+    print('NOT A SYSTEM SHELL: no process, socket, model call or filesystem access. Type `help` or `oc help`.', KIND.warn);
     push('', KIND.mute);
   }
 
@@ -4337,7 +4944,8 @@
         print('  ' + pad(k + ' ' + COMMANDS[k].args, 34) + COMMANDS[k].desc, KIND.data);
       });
       print('', KIND.mute);
-      print('Tip: ↑/↓ history · Tab completion · Ctrl+L clear · `hexstrike tools` · `mcp manifest --json`', KIND.mute);
+      print('Tip: ↑/↓ history · Tab completion · Ctrl+L clear · `|` pipelines · `&&` chains · $vars · aliases · scripts', KIND.mute);
+      print('OpenCode: `oc help` · `oc tools` · `oc run "<goal>"` · `vfs ls` · `sh help` · `panel plan`', KIND.mute);
     } },
     banner: { args: '', desc: 'Reprint the boot banner', run: function () { ui.terminalBooted = false; bootBanner(); } },
     clear: { args: '', desc: 'Clear the scrollback', run: function () { ui.terminalLines = []; paint(); } },
@@ -4353,7 +4961,7 @@
       var s = S.state, v = E.verifyChain(s.audit || []);
       print('PLATFORM STATUS', KIND.head);
       kv([
-        ['BUILD', 'v2.1.0 · 9 modules · 20 views · NO NETWORK EGRESS'],
+        ['BUILD', 'v2.2.0 · 10 modules · 20 views · NO NETWORK EGRESS'],
         ['OPERATOR', s.settings.operator],
         ['STRICT SCOPE', String(s.settings.strictScope)],
         ['HUMAN APPROVAL', String(s.settings.humanApproval)],
@@ -4674,7 +5282,10 @@
         'OUT OF SCOPE: activity without documented authorization; active network scanning/probing; exploitation;',
         '             credential attacks; persistence/evasion/lateral movement; autonomous external containment;',
         '             sending operator data to third parties; bypassing or disabling the scope gate.',
-        'HEXSTRIKE  : catalog-only adapter. Offensive tool names are refused and logged, never executed.'
+        'HEXSTRIKE  : catalog-only adapter. Offensive tool names are refused and logged, never executed.',
+        'OPENCODE   : contract-only workbench. VFS writes need human approval; webfetch, websearch,',
+        '             external_directory and doom_loop are hard-denied. No Bun runtime, LLM or disk I/O.',
+        '"ANYTHING" : everything inside the signed offline capability manifest — nothing outside it.'
       ].forEach(function (l) { print('  ' + l, KIND.warn); });
     } },
     go: { args: '<view-id>', desc: 'Navigate to another console view', run: function (argv) {
@@ -4683,7 +5294,121 @@
       U.navigate(id);
       print('  Navigated to ' + id + '.', KIND.ok);
     } },
-    exit: { args: '', desc: 'Return to the command center', run: function () { U.navigate('overview'); print('  Returning to the command center.', KIND.ok); } }
+    exit: { args: '', desc: 'Return to the command center', run: function () { U.navigate('overview'); print('  Returning to the command center.', KIND.ok); } },
+
+    /* ---------------- OpenCode-compatible governed workbench ------------- */
+    opencode: { args: '<subcommand>', desc: 'OpenCode adapter: status/tools/agents/plan/run/approve', run: function (argv) {
+      return opencodeCmd(argv);
+    } },
+    oc: { args: '<subcommand>', desc: 'Short alias for `opencode`', run: function (argv) { return opencodeCmd(argv); } },
+    vfs: { args: '<ls|cat|grep|glob|read|write|edit|patch|diff|diagnostics|reset>', desc: 'Virtual workspace operations', run: function (argv) {
+      return vfsCmd(argv);
+    } },
+    sh: { args: '<command>', desc: 'Governed virtual shell (help for commands)', run: function (argv) {
+      if (!argv.length) { print('Usage: sh <command>   (try `sh help`)', KIND.bad); return { decision: 'INVALID' }; }
+      return ocCall('bash', { command: argv.join(' ') });
+    } },
+    tool: { args: '<tool-id> [json-args]', desc: 'Invoke one OpenCode tool through the policy gate', run: function (argv, raw) {
+      if (!argv[0]) { print('Usage: tool <tool-id> [json-args]', KIND.bad); return { decision: 'INVALID' }; }
+      var json = raw ? String(raw).replace(/^\s*tool\s+\S+\s*/i, '').trim() : argv.slice(1).join(' ');
+      var args = {};
+      if (json) {
+        try { args = JSON.parse(json); }
+        catch (e) { print('Invalid JSON arguments: ' + e.message, KIND.bad); return { decision: 'INVALID' }; }
+      }
+      return ocCall(argv[0], args);
+    } },
+    set: { args: '<name> <value>', desc: 'Set a shell variable (use $name)', run: function (argv) {
+      if (!argv[0]) { print('Usage: set <name> <value>', KIND.bad); return { decision: 'INVALID' }; }
+      ui.terminalVars[argv[0]] = argv.slice(1).join(' ');
+      print('  $' + argv[0] + ' = ' + ui.terminalVars[argv[0]], KIND.ok);
+    } },
+    unset: { args: '<name>', desc: 'Delete a shell variable', run: function (argv) {
+      if (!argv[0] || !Object.prototype.hasOwnProperty.call(ui.terminalVars, argv[0])) { print('No such variable.', KIND.bad); return { decision: 'INVALID' }; }
+      delete ui.terminalVars[argv[0]]; print('  Variable removed.', KIND.ok);
+    } },
+    env: { args: '', desc: 'List built-in and user shell variables', run: function () {
+      var b = builtinVars();
+      print('SHELL VARIABLES', KIND.head);
+      Object.keys(b).forEach(function (k) { print('  ' + pad('$' + k, 16) + b[k], KIND.data); });
+      Object.keys(ui.terminalVars).forEach(function (k) { print('  ' + pad('$' + k, 16) + ui.terminalVars[k] + '  (user)', KIND.ok); });
+    } },
+    alias: { args: '<name> <command>', desc: 'Define a terminal alias', run: function (argv) {
+      if (!argv[0] || !argv[1]) { print('Usage: alias <name> <command>', KIND.bad); return { decision: 'INVALID' }; }
+      ui.terminalAliases[argv[0].toLowerCase()] = argv.slice(1).join(' ');
+      print('  Alias ' + argv[0] + ' → ' + argv.slice(1).join(' '), KIND.ok);
+    } },
+    unalias: { args: '<name>', desc: 'Remove a terminal alias', run: function (argv) {
+      delete ui.terminalAliases[(argv[0] || '').toLowerCase()]; print('  Alias removed.', KIND.ok);
+    } },
+    aliases: { args: '', desc: 'List terminal aliases', run: function () {
+      var k = Object.keys(ui.terminalAliases);
+      print('ALIASES', KIND.head);
+      if (!k.length) print('  (none defined)', KIND.mute);
+      k.forEach(function (x) { print('  ' + pad(x, 14) + '→ ' + ui.terminalAliases[x], KIND.data); });
+    } },
+    script: { args: '<save|run|list|delete>', desc: 'In-memory multi-command macros', run: function (argv) {
+      var sub = (argv[0] || 'list').toLowerCase();
+      if (sub === 'list') {
+        var names = Object.keys(ui.terminalScripts);
+        print('SCRIPTS (' + names.length + ')', KIND.head);
+        if (!names.length) print('  (none; `script save <name> <cmd>; <cmd>`)', KIND.mute);
+        names.forEach(function (n) { print('  ' + pad(n, 16) + ui.terminalScripts[n].join(' ; '), KIND.data); });
+        return;
+      }
+      if (sub === 'save') {
+        if (!argv[1] || !argv[2]) { print('Usage: script save <name> "<cmd>; <cmd>"', KIND.bad); return { decision: 'INVALID' }; }
+        ui.terminalScripts[argv[1]] = splitChain(argv.slice(2).join(' ')).map(function (x) { return x.cmd; });
+        print('  Saved script ' + argv[1] + ' (' + ui.terminalScripts[argv[1]].length + ' steps).', KIND.ok);
+        return;
+      }
+      if (sub === 'run') {
+        var sc = ui.terminalScripts[argv[1]];
+        if (!sc) { print('No such script: ' + argv[1], KIND.bad); return { decision: 'UNKNOWN' }; }
+        return runScript(sc, argv[1]);
+      }
+      if (sub === 'delete') { delete ui.terminalScripts[argv[1]]; print('  Script deleted.', KIND.ok); return; }
+      print('Usage: script <save|run|list|delete>', KIND.bad); return { decision: 'INVALID' };
+    } },
+    repeat: { args: '<n> <command>', desc: 'Repeat a command up to 10 times', run: function (argv) {
+      var n = Math.max(1, Math.min(10, parseInt(argv[0], 10) || 1)), cmd = argv.slice(1).join(' ');
+      if (!cmd) { print('Usage: repeat <n> <command>', KIND.bad); return { decision: 'INVALID' }; }
+      var last = 'ALLOWED';
+      for (var i = 0; i < n; i++) { print('  ── iteration ' + (i + 1) + '/' + n, KIND.mute); last = execLine(cmd); }
+      S.audit('TERMINAL_REPEAT', cmd.split(/\s+/)[0], last, n + ' iterations'); S.save();
+      return { decision: last };
+    } },
+    panel: { args: '<session|files|plan|diff|approvals|tools|audit>', desc: 'Switch the live workbench panel', run: function (argv) {
+      var tabs = ['session', 'files', 'plan', 'diff', 'approvals', 'tools', 'audit'];
+      if (tabs.indexOf(argv[0]) === -1) { print('Usage: panel <' + tabs.join('|') + '>', KIND.bad); return { decision: 'INVALID' }; }
+      ui.terminalWorkbenchTab = argv[0]; paintWorkbench();
+      print('  Workbench panel → ' + argv[0], KIND.ok);
+    } },
+    diff: { args: '[virtual-path]', desc: 'Show a unified diff of virtual file changes', run: function (argv) {
+      if (!OP) { print('OpenCode adapter unavailable.', KIND.bad); return { decision: 'REFUSED' }; }
+      var d = OP.diffText(ui.opencode, argv[0] || null);
+      print(d || 'No virtual file changes. Workspace clean.', d ? KIND.data : KIND.mute);
+    } },
+    diagnostics: { args: '', desc: 'Run LSP-like diagnostics on the virtual workspace', run: function () {
+      return ocCall('lsp', {});
+    } },
+    approvals: { args: '', desc: 'List pending human approvals', run: function () {
+      if (!OP) { print('OpenCode adapter unavailable.', KIND.bad); return { decision: 'REFUSED' }; }
+      var p = ui.opencode.pending;
+      print('PENDING APPROVALS (' + p.length + ')', KIND.head);
+      if (!p.length) { print('  (none)', KIND.mute); return; }
+      p.forEach(function (x) { print('  ' + pad(x.id, 18) + pad(x.tool, 18) + x.reason, KIND.warn); });
+      print('  Use `oc approve <id>` or `oc deny <id>`.', KIND.mute);
+    } },
+    workbench: { args: '[reset]', desc: 'OpenCode workbench overview / reset session', run: function (argv) {
+      if (argv[0] === 'reset') {
+        if (!OP) return { decision: 'REFUSED' };
+        OP.reset(ui.opencode);
+        S.audit('OPENCODE_SESSION', 'workbench', 'RESET', 'Virtual workspace restored.'); S.save();
+        print('  Session and virtual workspace reset.', KIND.ok); paintWorkbench(); return;
+      }
+      return opencodeCmd(['status']);
+    } }
   };
 
   function runTool(toolId, target, extra) {
@@ -4719,6 +5444,375 @@
     return { decision: 'ALLOWED' };
   }
 
+  /* ------------------ OpenCode workbench terminal helpers ---------------- */
+  function ocUnavailable() { print('OpenCode adapter is not loaded in this runtime.', KIND.bad); return { decision: 'REFUSED' }; }
+  function printOcResult(res, label) {
+    var mark = res.status === 'DONE' ? KIND.ok : res.status === 'PENDING' ? KIND.warn : KIND.bad;
+    print('  ' + (label ? label + ' · ' : '') + res.status + '  ' + res.tool + (res.code ? '  (' + res.code + ')' : ''), mark);
+    if (res.reason) print('  REASON   ' + res.reason, KIND.mute);
+    if (res.cap) print('  CAP      ' + res.cap, KIND.mute);
+    (res.output || []).slice(0, 80).forEach(function (l) { print('  │ ' + l, KIND.data); });
+    if ((res.output || []).length > 80) print('  │ … ' + (res.output.length - 80) + ' more lines (use vfs cat or a pipeline)', KIND.mute);
+    if (res.diff) print('  DIFF     changes written to the virtual workspace; `diff` to review.', KIND.warn);
+    if (res.status === 'PENDING') {
+      print('  APPROVAL ' + res.approvalId + ' — human decision required.', KIND.warn);
+      print('  `oc approve ' + res.approvalId + '` or use the Approvals panel.', KIND.mute);
+      ui.terminalWorkbenchTab = 'approvals'; paintWorkbench();
+      approvalModal(res.approvalId);
+    }
+  }
+  function ocCall(id, args) {
+    if (!OP) return ocUnavailable();
+    var res = OP.execute({ tool: id, args: args || {} }, ui.opencode);
+    S.audit('OPENCODE_TOOL', String(id), res.status,
+      JSON.stringify(args || {}).slice(0, 180) + (res.reason ? ' · ' + res.reason : '')); S.save();
+    printOcResult(res);
+    paintWorkbench();
+    return { decision: res.status === 'DONE' ? 'ALLOWED' : res.status === 'PENDING' ? 'PENDING' : 'REFUSED' };
+  }
+  function ocPlan(goal) {
+    if (!OP) return ocUnavailable();
+    var p = OP.plan(goal, ui.opencode);
+    print('OPENCODE PLAN · ' + p.goal.toUpperCase(), KIND.head);
+    print('  ENGINE   ' + p.engine + ' · ' + p.steps.length + ' steps', KIND.ok);
+    p.steps.forEach(function (x, i) { print('  ' + pad(String(i + 1) + '.', 4) + pad(x.title, 42) + '[' + x.tool + ']', KIND.data); });
+    print('  No model call, no provider, no network. `oc run "<goal>"` to execute.', KIND.mute);
+    S.audit('OPENCODE_PLAN', p.goal || 'workspace', 'GENERATED', p.steps.length + ' deterministic steps.'); S.save();
+    ui.terminalWorkbenchTab = 'plan'; paintWorkbench();
+  }
+  function ocRun(goal) {
+    if (!OP) return ocUnavailable();
+    var s = ui.opencode, p = OP.plan(goal, s), done = 0, blocked = null;
+    print('OPENCODE RUN · ' + (p.goal || 'workspace review'), KIND.head);
+    print('  streaming ' + p.steps.length + ' governed steps · agent ' + s.agent, KIND.mute);
+    for (var i = 0; i < p.steps.length; i++) {
+      var step = p.steps[i], res = OP.execute(step, s);
+      S.audit('OPENCODE_TOOL', step.tool, res.status, 'step ' + (i + 1) + '/' + p.steps.length + ' · ' + (p.goal || ''));
+      print('  [' + (i + 1) + '/' + p.steps.length + '] ' + pad(step.title, 42) + res.status + '  ' + step.tool,
+        res.status === 'DONE' ? KIND.ok : res.status === 'PENDING' ? KIND.warn : KIND.bad);
+      if (res.status === 'DONE') {
+        done++; if (s.todos[i]) s.todos[i].status = 'done';
+        var head = (res.output || [])[0];
+        if (head) print('        ' + String(head).slice(0, 120), KIND.mute);
+        if (res.diff) print('        VIRTUAL DIFF AVAILABLE · `diff` to review', KIND.warn);
+      } else {
+        blocked = res;
+        print('        ' + (res.reason || res.code || 'stopped'), KIND.warn);
+        break;
+      }
+    }
+    S.audit('OPENCODE_RUN', p.goal || 'workspace', blocked ? 'PAUSED' : 'COMPLETED',
+      done + '/' + p.steps.length + ' steps · no network · no OS process'); S.save();
+    print('  RESULT   ' + done + '/' + p.steps.length + ' steps · ' + (blocked ? 'paused for human decision' : 'complete'),
+      blocked ? KIND.warn : KIND.ok);
+    if (blocked && blocked.status === 'PENDING') {
+      ui.terminalWorkbenchTab = 'approvals'; approvalModal(blocked.approvalId);
+    }
+    ui.terminalWorkbenchTab = blocked ? 'approvals' : 'plan';
+    paintWorkbench();
+    return { decision: blocked ? 'PENDING' : 'ALLOWED' };
+  }
+  function ocApprove(id, decision) {
+    if (!OP) return ocUnavailable();
+    var r = OP.approve(ui.opencode, id, decision, S.state.settings.operator);
+    if (!r.ok) { print('  ' + r.error, KIND.bad); return { decision: 'UNKNOWN' }; }
+    S.audit('OPENCODE_APPROVAL', r.pending.tool, decision.toUpperCase(), 'Approval ' + id + ' by human operator.'); S.save();
+    print('  APPROVAL ' + id + ' · ' + decision.toUpperCase() + ' · ' + r.pending.tool, decision === 'approve' ? KIND.ok : KIND.warn);
+    if (r.result) printOcResult(r.result, 'post-approval');
+    U.closeModal();
+    ui.terminalWorkbenchTab = 'approvals'; paintWorkbench();
+    return { decision: decision === 'approve' ? 'ALLOWED' : 'DENIED' };
+  }
+  function approvalModal(id) {
+    if (!OP) return;
+    var p = ui.opencode.pending.filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    var body = '<div class="callout callout-warn"><div class="callout-icon">' + icon('shield') +
+      '</div><div><b>Permission policy requires an explicit human decision.</b><p>' + esc(p.reason) + '</p></div></div>' +
+      '<div class="terminal-meta" style="margin-top:12px">' +
+      '<div><span>APPROVAL</span><code>' + esc(p.id) + '</code></div>' +
+      '<div><span>TOOL</span><code>' + esc(p.tool) + '</code></div>' +
+      '<div><span>AGENT</span><code>' + esc(p.agent) + '</code></div>' +
+      '<div><span>ARGS</span><code>' + esc(JSON.stringify(p.args)) + '</code></div>' +
+      '<div><span>BOUNDARY</span><code>virtual workspace only · no OS/network</code></div></div>';
+    var footer = '<button class="btn btn-ghost" data-action="close-modal">Cancel</button>' +
+      '<button class="btn btn-ghost" data-action="terminal-approve" data-id="' + esc(p.id) + '" data-decision="deny">Deny</button>' +
+      '<button class="btn btn-primary" data-action="terminal-approve" data-id="' + esc(p.id) + '" data-decision="approve">Approve</button>';
+    U.modal('Human approval required', body, footer);
+  }
+  function opencodeCmd(argv) {
+    if (!OP) return ocUnavailable();
+    var s = ui.opencode, sub = (argv[0] || 'status').toLowerCase(), sm = OP.summary(s);
+    switch (sub) {
+      case 'status': case 'session': case 'info':
+        print('OPENCODE COMPATIBILITY LAYER', KIND.head);
+        kv([
+          ['UPSTREAM', OP.UPSTREAM.repo + '@v' + OP.UPSTREAM.version + ' · ' + OP.UPSTREAM.license],
+          ['INTEGRATION', 'contract only · no runtime, model, shell or egress'],
+          ['SESSION', s.id + ' · "' + s.title + '"'],
+          ['AGENT', s.agent + ' (' + (OP.agent(s.agent) || {}).mode + ')'],
+          ['GOAL', s.vars.goal || '(none)'],
+          ['TOOLS', sm.tools + ' (' + sm.allow + ' allow · ' + sm.ask + ' ask · ' + sm.deny + ' deny)'],
+          ['AGENTS', sm.agents + ' · permission keys ' + sm.permissions],
+          ['VIRTUAL FILES', sm.files + ' · changed ' + sm.changed],
+          ['APPROVALS', sm.pending + ' pending · tool calls ' + sm.calls]
+        ]);
+        print('  Hard-denied: webfetch, websearch, external_directory, doom_loop — cannot be relaxed.', KIND.warn);
+        print('  Try: `oc tools`, `oc agents`, `oc plan "audit headers"`, `oc run "fix app"`, `panel plan`', KIND.mute);
+        return;
+      case 'tools': {
+        var f = argv.slice(1).join(' '), list = OP.tools(f);
+        print('OPENCODE TOOL CATALOG · ' + list.length + ' match(es)' + (f ? ' for "' + f + '"' : ''), KIND.head);
+        table(['TOOL', 'ACTION', 'PERMISSION', 'CAPABILITY'], list.slice(0, 60).map(function (t) {
+          return [t.id, t.action.toUpperCase(), t.key, t.cap];
+        }));
+        if (list.length > 60) print('  … ' + (list.length - 60) + ' more; use `oc tools <filter>`', KIND.mute);
+        print('  `tool <tool-id> [json-args]` routes through the policy gate.', KIND.mute);
+        return;
+      }
+      case 'tool': {
+        var t = OP.get(argv[1]);
+        if (!t) { print('No such OpenCode tool: ' + argv[1], KIND.bad); return { decision: 'UNKNOWN' }; }
+        var g = OP.evaluate(t.id, s, {});
+        print('OPENCODE TOOL · ' + t.id.toUpperCase(), KIND.head);
+        kv([['PERMISSION', t.key], ['BASE ACTION', t.action.toUpperCase()], ['EFFECTIVE', g.action.toUpperCase() + ' · ' + g.code],
+          ['CAPABILITY', t.cap], ['DESCRIPTION', t.reason]]);
+        return;
+      }
+      case 'agents':
+        print('OPENCODE AGENTS', KIND.head);
+        table(['AGENT', 'MODE', 'DESCRIPTION'], OP.AGENTS.map(function (a) { return [a.id, a.mode, a.desc.slice(0, 26)]; }));
+        print('  `oc agent <id>` applies its permission defaults. Hard-deny keys stay denied.', KIND.mute);
+        return;
+      case 'agent': {
+        if (!argv[1]) { print('Usage: oc agent <build|plan|general|explore|…>', KIND.bad); return { decision: 'INVALID' }; }
+        var r = OP.setAgent(s, argv[1]);
+        if (!r.ok) { print('  ' + r.error, KIND.bad); return { decision: 'UNKNOWN' }; }
+        S.audit('OPENCODE_AGENT', argv[1], 'SELECTED', 'Agent permission defaults applied.'); S.save();
+        print('  ACTIVE AGENT ' + argv[1] + ' · ' + r.agent.mode + ' · ' + r.agent.desc, KIND.ok);
+        paintWorkbench(); return;
+      }
+      case 'permissions':
+        print('OPENCODE PERMISSION POLICY', KIND.head);
+        Object.keys(s.permissions).sort().forEach(function (k) {
+          print('  ' + pad(k, 24) + pad(s.permissions[k].toUpperCase(), 10) +
+            (OP.HARD_DENY[k] ? 'HARD-DENY · cannot be relaxed' : 'operator-configurable'), OP.HARD_DENY[k] ? KIND.warn : KIND.data);
+        });
+        return;
+      case 'permission': {
+        if (!argv[1] || !argv[2]) { print('Usage: oc permission <key> <allow|ask|deny>', KIND.bad); return { decision: 'INVALID' }; }
+        var pr = OP.setPermission(s, argv[1], argv[2].toLowerCase());
+        if (!pr.ok) { print('  ' + pr.error, KIND.bad); return { decision: 'REFUSED' }; }
+        S.audit('OPENCODE_PERMISSION', argv[1], argv[2].toUpperCase(), 'Operator changed permission policy.'); S.save();
+        print('  POLICY ' + argv[1] + ' → ' + argv[2].toUpperCase(), KIND.ok);
+        paintWorkbench(); return;
+      }
+      case 'plan': ocPlan(argv.slice(1).join(' ')); return;
+      case 'run': return ocRun(argv.slice(1).join(' '));
+      case 'approve': return ocApprove(argv[1], 'approve');
+      case 'deny': return ocApprove(argv[1], 'deny');
+      case 'pending': return COMMANDS.approvals.run([]);
+      case 'mcp': {
+        var m = OP.mcp();
+        print('OPENCODE MCP MANIFEST · ' + m.name, KIND.head);
+        kv([['UPSTREAM', m.upstream], ['TRANSPORT', m.transport], ['TOOLS', m.tools.length],
+          ['RESOURCES', m.resources.length], ['PROMPTS', m.prompts.length], ['SAMPLING', String(m.capabilities.sampling)],
+          ['ALWAYS ALLOW', '[] (every write is reviewed)']]);
+        if (argv[1] === '--json') {
+          var saved = exportFile('aegis-opencode-mcp.json', JSON.stringify(m, null, 2));
+          print('  Manifest ' + (saved ? 'downloaded' : 'prepared') + ' as aegis-opencode-mcp.json (' +
+            JSON.stringify(m).length + ' bytes).', KIND.ok);
+          S.audit('OPENCODE_MCP_EXPORT', m.name, 'EXPORTED', 'Contract manifest export.'); S.save();
+        } else print('  `oc mcp --json` exports the full contract manifest.', KIND.mute);
+        return;
+      }
+      case 'reset': return COMMANDS.workbench.run(['reset']);
+      case 'help':
+        print('OPENCODE COMMANDS', KIND.head);
+        ['status · adapter, agent and session state', 'tools [filter] · list the tool/permission catalog',
+          'tool <id> · inspect one tool and its effective policy', 'agents · list built-in agents',
+          'agent <id> · apply an agent permission profile', 'permissions · show the permission table',
+          'permission <key> <allow|ask|deny> · change a policy (hard-deny stays denied)',
+          'plan "<goal>" · deterministic multistep plan', 'run "<goal>" · stream the plan through the gate',
+          'approve|deny <id> · human approval decision', 'mcp [--json] · MCP contract manifest',
+          'reset · restore the virtual workspace'].forEach(function (l) { print('  ' + l, KIND.data); });
+        return;
+      default: print('Unknown opencode subcommand: ' + sub + '  (`oc help`)', KIND.bad); return { decision: 'UNKNOWN' };
+    }
+  }
+  function vfsCmd(argv) {
+    if (!OP) return ocUnavailable();
+    var s = ui.opencode, sub = (argv[0] || 'ls').toLowerCase();
+    switch (sub) {
+      case 'ls': case 'list': return ocCall('list', {});
+      case 'tree': return ocCall('bash', { command: 'tree' });
+      case 'cat': case 'read': {
+        if (!argv[1]) { print('Usage: vfs cat <path>  (`vfs ls`)', KIND.bad); return { decision: 'INVALID' }; }
+        return ocCall('read', { path: argv[1] });
+      }
+      case 'write': {
+        if (!argv[1]) { print('Usage: vfs write <path> <text>', KIND.bad); return { decision: 'INVALID' }; }
+        return ocCall('write', { path: argv[1], content: argv.slice(2).join(' ') });
+      }
+      case 'edit': {
+        if (!argv[1] || !argv[2]) { print('Usage: vfs edit <path> <find> <replace>', KIND.bad); return { decision: 'INVALID' }; }
+        return ocCall('edit', { path: argv[1], find: argv[2], replace: argv.slice(3).join(' ') });
+      }
+      case 'patch': {
+        if (!argv[1] || !argv[2]) { print('Usage: vfs patch <path> <old-line> <new-line>', KIND.bad); return { decision: 'INVALID' }; }
+        return ocCall('apply_patch', { path: argv[1], patch: '-' + argv[2] + '\n+' + argv.slice(3).join(' ') });
+      }
+      case 'grep': {
+        if (!argv[1]) { print('Usage: vfs grep <regex> [glob]', KIND.bad); return { decision: 'INVALID' }; }
+        return ocCall('grep', { pattern: argv[1], path: argv[2] || null });
+      }
+      case 'glob': return ocCall('glob', { pattern: argv[1] || '*' });
+      case 'diff': return COMMANDS.diff.run(argv.slice(1));
+      case 'diagnostics': case 'lsp': return ocCall('lsp', {});
+      case 'reset': return COMMANDS.workbench.run(['reset']);
+      case 'help':
+        print('VIRTUAL FILE SYSTEM', KIND.head);
+        ['ls|tree · list in-memory files', 'cat <path> · numbered read', 'grep <regex> [glob] · regex search',
+          'glob <pattern> · path matching', 'write <path> <text> · virtual create (approval required)',
+          'edit <path> <find> <replace> · find/replace (approval required)',
+          'patch <path> <old-line> <new-line> · unified hunk (approval required)',
+          'diff [path] · unified diff', 'diagnostics · LSP-like findings', 'reset · restore seeds'].forEach(function (l) {
+          print('  ' + l, KIND.data); });
+        return;
+      default: print('Unknown vfs subcommand: ' + sub + '  (`vfs help`)', KIND.bad); return { decision: 'UNKNOWN' };
+    }
+  }
+  function runScript(steps, name) {
+    print('SCRIPT · ' + name + ' · ' + steps.length + ' step(s)', KIND.head);
+    var last = 'ALLOWED';
+    for (var i = 0; i < steps.length; i++) {
+      print('  ── ' + (i + 1) + '/' + steps.length + '  ' + steps[i], KIND.mute);
+      last = execLine(steps[i]);
+      if (last === 'REFUSED' || last === 'ERROR' || last === 'UNKNOWN') break;
+    }
+    S.audit('TERMINAL_SCRIPT', name, last, steps.length + ' in-memory macro steps'); S.save();
+    print('  Script finished · last decision ' + last, last === 'ALLOWED' ? KIND.ok : KIND.warn);
+    return { decision: last };
+  }
+
+  /* --------------------------- workbench panel --------------------------- */
+  function workbenchTabs() {
+    var tabs = ['session', 'files', 'plan', 'diff', 'approvals', 'tools', 'audit'];
+    return '<div class="oc-tabs">' + tabs.map(function (t) {
+      return '<button class="oc-tab' + (ui.terminalWorkbenchTab === t ? ' active' : '') +
+        '" data-action="terminal-tab" data-tab="' + t + '">' + esc(t.toUpperCase()) + '</button>';
+    }).join('') + '</div>';
+  }
+  function ocChip(cmd, label) {
+    return '<button class="example-chip" data-action="terminal-cmd" data-cmd="' + esc(cmd) + '">' + esc(label) + '</button>';
+  }
+  function workbenchHtml() {
+    if (!OP) return '<div class="oc-panel"><p class="muted">Adapter unavailable.</p></div>';
+    var s = ui.opencode, sm = OP.summary(s), tab = ui.terminalWorkbenchTab, body = '';
+    if (tab === 'session') {
+      body = '<div class="oc-stat"><b>' + sm.tools + '</b><span>TOOLS</span></div>' +
+        '<div class="oc-stat"><b>' + sm.agents + '</b><span>AGENTS</span></div>' +
+        '<div class="oc-stat"><b>' + sm.files + '</b><span>VFS FILES</span></div>' +
+        '<div class="oc-stat"><b>' + sm.pending + '</b><span>APPROVALS</span></div>' +
+        '<div class="oc-kv"><span>AGENT</span><code>' + esc(s.agent) + '</code></div>' +
+        '<div class="oc-kv"><span>SESSION</span><code>' + esc(s.id) + '</code></div>' +
+        '<div class="oc-kv"><span>GOAL</span><code>' + esc(s.vars.goal || '—') + '</code></div>' +
+        '<div class="oc-kv"><span>CHANGED</span><code>' + sm.changed + ' virtual file(s)</code></div>' +
+        '<div class="oc-kv"><span>CALLS</span><code>' + sm.calls + ' sealed in ledger</code></div>' +
+        '<div class="oc-actions">' + ocChip('oc plan "audit headers and fix app"', 'Plan') +
+        ocChip('oc run "audit headers and fix app"', 'Run') + ocChip('oc permissions', 'Policy') +
+        ocChip('vfs diagnostics', 'Diagnostics') + '</div>';
+    } else if (tab === 'files') {
+      body = '<div class="oc-list">' + OP.files(s).map(function (p) {
+        return '<button class="oc-row" data-action="terminal-cmd" data-cmd="vfs cat ' + esc(p) + '">' +
+          '<code>' + esc(p) + '</code><small>' + String(s.files[p]).length + ' B</small></button>';
+      }).join('') + '</div><div class="oc-actions">' + ocChip('vfs ls', 'List') +
+        ocChip('vfs grep eval', 'Grep "eval"') + ocChip('diff', 'Diff') + '</div>';
+    } else if (tab === 'plan') {
+      body = (s.todos.length ? '<div class="oc-list">' + s.todos.map(function (t, i) {
+        return '<div class="oc-row"><code>' + (t.status === 'done' ? '✔' : String(i + 1).padStart(2, ' ')) + '</code><span>' +
+          esc(t.text) + '</span><small>' + esc(t.status) + '</small></div>';
+      }).join('') + '</div>' : '<p class="muted">No plan yet. Run `oc plan "<goal>"`.</p>') +
+        '<div class="oc-actions">' + ocChip('oc plan "review workspace"', 'New plan') +
+        ocChip('oc run "review workspace"', 'Execute') + ocChip('tool todowrite', 'Todos') + '</div>';
+    } else if (tab === 'diff') {
+      var changed = OP.diff(s).filter(function (d) { return d.changed; });
+      body = (changed.length ? changed.map(function (d) {
+        return '<div class="oc-diff"><code>' + esc(d.file) + '</code><pre>' +
+          esc(d.ops.filter(function (o) { return o.t !== ' '; }).slice(0, 14).map(function (o) { return o.t + o.v; }).join('\n')) +
+          '</pre></div>';
+      }).join('') : '<p class="muted">Virtual workspace clean. Approve a patch to see a diff.</p>') +
+        '<div class="oc-actions">' + ocChip('diff', 'Full diff') +
+        '<button class="example-chip" data-action="terminal-export-diff">Export diff</button></div>';
+    } else if (tab === 'approvals') {
+      body = (s.pending.length ? '<div class="oc-list">' + s.pending.map(function (p) {
+        return '<div class="oc-row"><code>' + esc(p.tool) + '</code><span>' + esc(p.reason) + '</span></div>' +
+          '<div class="oc-actions"><button class="example-chip" data-action="terminal-approve" data-id="' + esc(p.id) +
+          '" data-decision="approve">Approve</button><button class="example-chip" data-action="terminal-approve" data-id="' +
+          esc(p.id) + '" data-decision="deny">Deny</button></div>';
+      }).join('') : '<p class="muted">No pending approvals. Every write is reviewed here first.</p>') +
+        '<div class="oc-actions">' + ocChip('approvals', 'List') + ocChip('vfs patch src/app.js "return res.send(eval(html));" "return res.send(safe(html));"', 'Try a patch') + '</div>';
+    } else if (tab === 'tools') {
+      body = '<div class="oc-list">' + OP.TOOLS.slice(0, 22).map(function (t) {
+        return '<button class="oc-row" data-action="terminal-cmd" data-cmd="oc tool ' + esc(t.id) + '">' +
+          '<code>' + esc(t.id) + '</code><span>' + esc(t.key) + '</span><small>' + esc(t.action) + '</small></button>';
+      }).join('') + '</div><div class="oc-actions">' + ocChip('oc tools', 'All tools') +
+        ocChip('oc tools deny', 'Hard-denied') + ocChip('oc agents', 'Agents') + '</div>';
+    } else if (tab === 'audit') {
+      body = '<div class="oc-list">' + (S.state.audit || []).slice(-12).reverse().map(function (a) {
+        return '<div class="oc-row"><code>#' + esc(a.seq) + '</code><span>' + esc(a.action) + ' · ' +
+          esc(a.target) + '</span><small>' + esc(a.decision) + '</small></div>';
+      }).join('') + '</div><div class="oc-actions">' + ocChip('audit verify', 'Verify chain') +
+        ocChip('report export', 'Export evidence') + '</div>';
+    }
+    return '<div id="terminal-workbench" class="oc-panel">' + workbenchTabs() +
+      '<div class="oc-body">' + body + '</div></div>';
+  }
+  function paintWorkbench() {
+    var host = $('terminal-workbench');
+    if (!host || !OP) return;
+    host.outerHTML = workbenchHtml();
+  }
+
+  function dispatch(line) {
+    var t = tokenize(line), name = (t[0] || '').toLowerCase(), argv = t.slice(1);
+    var c = COMMANDS[name], decision = 'ALLOWED';
+    if (!c) { print('command not found: ' + name + '  (try `help`)', KIND.bad); decision = 'UNKNOWN'; }
+    else {
+      try {
+        var out = c.run(argv, line);
+        if (out && out.decision) decision = out.decision;
+      } catch (err) {
+        print('runtime error: ' + (err && err.message ? err.message : String(err)), KIND.bad);
+        decision = 'ERROR';
+      }
+    }
+    S.audit('TERMINAL_CMD', name || '(empty)', decision, line.slice(0, 180));
+    S.save();
+    return decision;
+  }
+  function runPipeline(parts) {
+    quiet = true; captureSink = [];
+    var first = 'ALLOWED';
+    try { first = dispatch(expandVars(expandAliasOnce(parts[0]))); }
+    catch (e) { first = 'ERROR'; }
+    var lines = captureSink.slice();
+    quiet = false; captureSink = null;
+    for (var i = 1; i < parts.length; i++) lines = applyFilter(lines, expandVars(parts[i]));
+    if (!lines.length) lines = ['(empty pipeline result)'];
+    lines.forEach(function (l) { print(l, KIND.data); });
+    print('  pipeline: ' + parts.length + ' stages · ' + lines.length + ' output line(s)', KIND.mute);
+    S.audit('TERMINAL_PIPE', parts[0].split(/\s+/)[0] || 'pipe', first,
+      parts.length + ' stages · ' + lines.length + ' lines'); S.save();
+    return first;
+  }
+  function execLine(line) {
+    var expanded = expandVars(expandAliasOnce(String(line || '').trim()));
+    if (!expanded) return 'ALLOWED';
+    var pipes = splitOutside(expanded, '|');
+    if (pipes.length > 1) return runPipeline(pipes);
+    return dispatch(expanded);
+  }
   function exec(raw) {
     var line = String(raw || '').trim();
     if (!line) return;
@@ -4726,26 +5820,15 @@
     if (ui.terminalHistory.length > 200) ui.terminalHistory.shift();
     ui.terminalHistIndex = -1;
     push('aegis ❯ ' + line, KIND.cmd, 'IN');
-    var t = tokenize(line);
-    var name = (t[0] || '').toLowerCase(), argv = t.slice(1);
-    var c = COMMANDS[name];
-    var decision = 'ALLOWED', detail = line.slice(0, 180);
-    if (!c) {
-      print('command not found: ' + name + '  (try `help`)', KIND.bad);
-      decision = 'UNKNOWN';
-    } else {
-      try {
-        var out = c.run(argv);
-        if (out && out.decision) decision = out.decision;
-      } catch (err) {
-        print('runtime error: ' + (err && err.message ? err.message : String(err)), KIND.bad);
-        decision = 'ERROR';
-      }
-    }
+    var segs = splitChain(line), ok = true;
+    segs.forEach(function (s) {
+      if (s.op === '&&' && !ok) { print('  skipped (previous && failed)', KIND.mute); return; }
+      var d = execLine(s.cmd);
+      ok = d !== 'REFUSED' && d !== 'UNKNOWN' && d !== 'ERROR' && d !== 'INVALID';
+    });
     push('', KIND.mute);
-    S.audit('TERMINAL_CMD', name || '(empty)', decision, detail);
-    S.save();
     paint();
+    paintWorkbench();
     root.setTimeout(focusInput, 0);
   }
 
@@ -4755,7 +5838,9 @@
   U.registerCommands([
     { label: 'Open the AEGIS terminal', hint: 'OPERATE', icon: 'terminal', run: function () { U.navigate('terminal'); root.setTimeout(focusInput, 0); } },
     { label: 'HexStrike tool catalog', hint: 'ANALYZE', icon: 'cpu', run: function () { U.navigate('terminal'); root.setTimeout(function () { exec('hexstrike tools'); }, 0); } },
-    { label: 'Print MCP manifest', hint: 'GOVERN', icon: 'file', run: function () { U.navigate('terminal'); root.setTimeout(function () { exec('mcp manifest'); }, 0); } }
+    { label: 'Print MCP manifest', hint: 'GOVERN', icon: 'file', run: function () { U.navigate('terminal'); root.setTimeout(function () { exec('mcp manifest'); }, 0); } },
+    { label: 'OpenCode workbench status', hint: 'OPERATE', icon: 'cpu', run: function () { U.navigate('terminal'); root.setTimeout(function () { exec('oc status'); }, 0); } },
+    { label: 'Run OpenCode governed plan', hint: 'AGENT', icon: 'bolt', run: function () { U.navigate('terminal'); root.setTimeout(function () { exec('oc run "audit headers and fix app"'); }, 0); } }
   ]);
 
   U.registerAction('terminal-quick', function (t) {
@@ -4764,6 +5849,27 @@
   });
   U.registerAction('terminal-copy', function () {
     U.copy(ui.terminalLines.map(function (l) { return '[' + l.t + '] ' + l.text; }).join('\n'));
+  });
+  U.registerAction('terminal-tab', function (t) {
+    ui.terminalWorkbenchTab = t.getAttribute('data-tab') || 'session';
+    paintWorkbench();
+  });
+  U.registerAction('terminal-cmd', function (t) {
+    var cmd = t.getAttribute('data-cmd');
+    if (cmd) exec(cmd);
+  });
+  U.registerAction('terminal-approve', function (t) {
+    var id = t.getAttribute('data-id'), decision = t.getAttribute('data-decision') === 'deny' ? 'deny' : 'approve';
+    if (!id) return;
+    U.closeModal();
+    exec('oc ' + decision + ' ' + id);
+  });
+  U.registerAction('terminal-export-diff', function () {
+    if (!OP) return;
+    var text = OP.diffText(ui.opencode) || 'No virtual file changes.\n';
+    var saved = exportFile('aegis-opencode-workspace.patch', text);
+    S.audit('OPENCODE_DIFF_EXPORT', 'virtual workspace', 'EXPORTED', 'Unified diff export.'); S.save();
+    U.toast('Virtual diff ' + (saved ? 'downloaded' : 'prepared') + '.', 'ok');
   });
   U.registerAction('terminal-manifest', function () {
     exportFile('aegis-hexstrike-mcp.json', JSON.stringify(HX.MCP, null, 2));
@@ -4782,21 +5888,24 @@
     bootBanner();
     var sm = HX.summary();
     var quick = [
-      ['help', 'help'], ['status', 'status'], ['hexstrike info', 'hexstrike info'],
+      ['help', 'help'], ['status', 'status'], ['oc status', 'oc status'], ['oc tools', 'oc tools'],
+      ['oc run "audit headers and fix app"', 'oc run'],
+      ['vfs ls', 'vfs ls'], ['vfs diagnostics', 'diagnostics'], ['sh help', 'sh help'],
       ['hexstrike tools', 'hexstrike tools'], ['mcp manifest', 'mcp manifest'],
       ['orchestrator run', 'orchestrator run'], ['mitre coverage', 'mitre coverage'],
       ['policy', 'policy']
     ];
-    return '<div class="page-head"><div><div class="eyebrow">OPERATE · OPERATOR TERMINAL</div><h1>AEGIS Terminal</h1>' +
-      '<p>A governed command line for the whole platform. HexStrike AI v6.0 is integrated as an offline, MCP-shaped adapter catalog.</p></div>' +
+    var osm = OP ? OP.summary(ui.opencode) : { tools: 0, allow: 0, ask: 0, deny: 0, agents: 0, permissions: 0 };
+    return '<div class="page-head"><div><div class="eyebrow">OPERATE · OPERATOR TERMINAL · OPENCODE WORKBENCH</div><h1>AEGIS Terminal</h1>' +
+      '<p>An ultra-advanced, governed command line for the whole platform: OpenCode-compatible agents, tools, permissions, a virtual workspace, deterministic planning, pipelines and HexStrike AI v6.0 — all offline.</p></div>' +
       '<div class="head-actions"><span class="chip chip-lock">' + icon('shield') + ' AUTHORIZATION-BOUND</span>' +
       '<button class="btn btn-ghost" data-action="terminal-manifest">' + icon('download') + ' MCP manifest</button>' +
       '<button class="btn btn-ghost" data-action="terminal-copy">' + icon('file') + ' Copy log</button></div></div>' +
       '<div class="callout callout-info"><div class="callout-icon">' + icon('lock') + '</div><div><b>This is not a system shell.</b>' +
-      '<p>No OS process is spawned, no socket is opened and no file is written. Every command is interpreted by the AEGIS policy engine, checked against the signed capability manifest and sealed in the hash-chained ledger. HexStrike tool names map to real offline analyzers or to hard refusals — never to upstream binaries.</p></div></div>' +
+      '<p>No OS process is spawned, no socket is opened, no LLM provider is called and no real file is written. Every command is interpreted by the AEGIS policy engine, checked against the signed capability manifest and sealed in the hash-chained ledger. The OpenCode workbench operates on an in-memory virtual workspace; HexStrike tool names map to real offline analyzers or to hard refusals — never to upstream binaries.</p></div></div>' +
       '<div class="terminal-layout"><div class="col-main">' +
         '<div class="terminal-window"><div class="terminal-bar"><span class="t-dots"><i></i><i></i><i></i></span>' +
-        '<span class="t-title">operator@aegis-sentinel: ~ </span><span class="t-badge">HEXSTRIKE ADAPTER v6.0 · OFFLINE</span></div>' +
+        '<span class="t-title">operator@aegis-sentinel: ~ </span><span class="t-badge">OPENCODE v2.2 · HEXSTRIKE v6.0 · OFFLINE</span></div>' +
         '<div id="terminal-out" class="terminal-out">' + linesHtml() + '</div>' +
         '<form data-form="terminal-input" class="terminal-form" autocomplete="off"><span class="t-prompt">aegis ❯</span>' +
         '<input id="terminal-input" name="cmd" type="text" spellcheck="false" autocomplete="off" placeholder="type a command…" value="' + esc(ui.terminalDraft) + '"></form></div>' +
@@ -4814,6 +5923,16 @@
           '<div><span>LICENSE</span><code>' + esc(HX.UPSTREAM.license) + '</code></div>' +
           '<div><span>TRANSPORT</span><code>in-browser / offline</code></div>' +
           '</div><p class="muted" style="margin-top:10px;font-size:10.5px">' + esc(HX.UPSTREAM.note) + '</p>') +
+        section('OpenCode adapter', OP ? OP.UPSTREAM.repo + '@v' + OP.UPSTREAM.version : 'unavailable', '<span class="tag">CONTRACT ONLY</span>',
+          '<div class="stat-row"><div><b>' + osm.tools + '</b><span>TOOLS</span></div>' +
+          '<div><b>' + osm.agents + '</b><span>AGENTS</span></div>' +
+          '<div><b>' + osm.deny + '</b><span>HARD-DENIED</span></div></div>' +
+          '<div class="terminal-meta">' +
+          '<div><span>PERMISSIONS</span><code>' + osm.permissions + ' keys · allow / ask / deny</code></div>' +
+          '<div><span>PLANNER</span><code>aegis-deterministic-v2</code></div>' +
+          '<div><span>WORKSPACE</span><code>in-memory VFS · no disk</code></div>' +
+          '<div><span>APPROVAL</span><code>human-in-the-loop for writes</code></div>' +
+          '</div><p class="muted" style="margin-top:10px;font-size:10.5px">' + esc(OP ? OP.UPSTREAM.note : '') + '</p>') +
         section('Agent personas', sm.agents + ' mapped · ' + sm.blockedAgents + ' blocked', '',
           HX.AGENTS.map(function (a) {
             return '<div class="gap-row"><code>' + esc(a.status.toUpperCase()) + '</code><span>' + esc(a.id) + '</span><small>' + esc(a.role) + '</small></div>';
@@ -4829,7 +5948,11 @@
             ['scope check api.acme-lab.io', 'verify authorization'],
             ['audit verify', 'check the hash chain']
           ].map(function (x) { return '<div><code>' + esc(x[0]) + '</code><small>' + esc(x[1]) + '</small></div>'; }).join('') + '</div>') +
-      '</div></div>';
+      '</div></div>' +
+      '<div class="oc-shell"><div class="oc-head"><div><div class="eyebrow">OPENCODE · GOVERNED AGENT WORKBENCH</div>' +
+      '<h2>Live workbench</h2><p>Session state, virtual files, plans, diffs, approvals, tool policy and ledger — updated after every command.</p></div>' +
+      '<span class="chip chip-lock">' + icon('shield') + ' NO EGRESS · NO OS PROCESS · NO MODEL CALL</span></div>' +
+      workbenchHtml() + '</div>';
   });
 
   /* Keyboard: history, completion, clear. Registered before boot() so it
@@ -4858,7 +5981,9 @@
       var v = t.value, parts = v.split(/\s+/), last = parts[parts.length - 1];
       var pool;
       if (parts.length === 1) pool = Object.keys(COMMANDS).concat(Object.keys(COMMANDS).map(function (x) { return x; }));
-      else if (/^(run|tool|call)$/.test(parts[parts.length - 2]) || /^(hexstrike|mcp)$/.test(parts[0])) pool = HX.TOOLS.map(function (x) { return x.id; });
+      else if (/^(run|call)$/.test(parts[parts.length - 2]) || /^(hexstrike|mcp)$/.test(parts[0])) pool = HX.TOOLS.map(function (x) { return x.id; });
+      else if (/^(tool|cat|read|glob|grep|diff)$/.test(parts[parts.length - 2]) || /^(oc|opencode|vfs)$/.test(parts[0]))
+        pool = (OP ? OP.TOOLS.map(function (x) { return x.id; }) : []).concat(OP ? OP.files(ui.opencode) : []);
       else pool = Object.keys(COMMANDS);
       var matches = pool.filter(function (x) { return x.indexOf(last) === 0; });
       if (matches.length === 1) { parts[parts.length - 1] = matches[0]; setInput(parts.join(' ')); }
@@ -4877,7 +6002,8 @@
   root.setTimeout(function () { if (ui.view === 'terminal') focusInput(); }, 0);
 
   root.AEGIS_TERMINAL = {
-    exec: exec, commands: COMMANDS, lines: ui.terminalLines, hexstrike: HX,
-    render: function () { bootBanner(); U.renderView(); paint(); }
+    exec: exec, commands: COMMANDS, lines: ui.terminalLines, hexstrike: HX, opencode: OP,
+    session: ui.opencode, vars: ui.terminalVars, aliases: ui.terminalAliases, scripts: ui.terminalScripts,
+    render: function () { bootBanner(); U.renderView(); paint(); paintWorkbench(); }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

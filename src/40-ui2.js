@@ -569,7 +569,7 @@
   U.registerView('overview', function () {
     var modules = [
       ['20', 'CONSOLE VIEWS', 'grid'], ['7', 'INGEST FORMATS', 'wave'], ['16+', 'DETECTION RULES', 'target'],
-      ['42', 'ATT&CK TECHNIQUES', 'chart'], ['150', 'HEXSTRIKE TOOLS', 'cpu'], ['8', 'ORCHESTRATOR TASKS', 'bolt']
+      ['42', 'ATT&CK TECHNIQUES', 'chart'], ['150', 'HEXSTRIKE TOOLS', 'cpu'], ['41', 'OPENCODE TOOLS', 'cpu'], ['8', 'ORCHESTRATOR TASKS', 'bolt']
     ];
     var breadth = '<div class="breadth-grid">' + modules.map(function (m) {
       return '<div class="breadth-cell">' + icon(m[2]) + '<b>' + esc(m[0]) + '</b><span>' + esc(m[1]) + '</span></div>';
@@ -581,12 +581,12 @@
       ['Detection Studio', 'ATT&CK heatmap + custom rules', 'studio', 'target'],
       ['Investigation Copilot', 'Local natural-language queries', 'investigate', 'search'],
       ['Risk Quantification', 'Monte Carlo over open findings', 'quant', 'chart'],
-      ['AEGIS Terminal', 'Governed CLI + HexStrike adapter', 'terminal', 'terminal']
+      ['AEGIS Terminal', 'OpenCode workbench + HexStrike adapter', 'terminal', 'terminal']
     ];
     var rail = '<div class="quick-grid">' + engines.map(function (e) {
       return '<button class="quick" data-action="nav" data-view="' + e[2] + '">' + icon(e[3]) + '<b>' + esc(e[0]) + '</b><small>' + esc(e[1]) + '</small></button>';
     }).join('') + '</div>';
-    return originalOverview() + section('Platform breadth', 'AEGIS SENTINEL v2.1 capability surface', '<span class="tag">ULTRA-ADVANCED / AUTHORIZED-ONLY</span>', breadth) +
+    return originalOverview() + section('Platform breadth', 'AEGIS SENTINEL v2.2 capability surface', '<span class="tag">ULTRA-ADVANCED / AUTHORIZED-ONLY</span>', breadth) +
       section('v2 engines', 'Jump into an advanced workflow', '', rail, 'panel-tight');
   });
 

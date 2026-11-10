@@ -165,7 +165,7 @@
         '<div class="side-foot"><div class="scope-mini"><div class="scope-mini-head"><span>AUTHORIZATION BOUNDARY</span><b>' + active + '/' + s.assets.length + '</b></div>' +
           '<div class="scope-track"><span style="width:' + Math.round(active / (s.assets.length || 1) * 100) + '%"></span></div>' +
           '<small>' + esc(s.settings.operator) + ' · local session</small></div>' +
-          '<div class="build">v2.1.0 · 9 modules · 20 views · <span>NO NETWORK EGRESS</span></div></div>' +
+          '<div class="build">v2.2.0 · 10 modules · 20 views · <span>NO NETWORK EGRESS</span></div></div>' +
       '</aside>' +
       '<div class="workspace"><header class="topbar">' +
         '<div class="crumbs"><span>WORKSPACE</span><b>/</b><strong>' + esc(VIEWS[ui.view].label) + '</strong></div>' +

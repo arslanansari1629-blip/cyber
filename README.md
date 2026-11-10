@@ -1,23 +1,67 @@
-# AEGIS // SENTINEL v2.1
+# AEGIS // SENTINEL v2.2
 
-An **autonomous, authorization-bound defensive security operations platform** with an interactive operator terminal and a governed HexStrike AI compatibility layer. Static, zero-dependency, fully offline: all analysis engines execute in the browser (or in the local CLI) on data the operator supplies. No backend, no API keys, no network egress, no exploitation capability.
+An **autonomous, authorization-bound defensive security operations platform** with an ultra-advanced operator terminal that embeds a governed **OpenCode-compatible agent workbench** and a HexStrike AI compatibility layer. Static, zero-dependency, fully offline: all analysis engines execute in the browser (or in the local CLI) on data the operator supplies. No backend, no API keys, no network egress, no exploitation capability.
 
 > **Design boundary:** the agent can do *anything in its signed capability manifest* — and nothing outside it. "Without authorization" operation is the exact failure mode this platform prevents, logs, and makes verifiable in a hash-chained ledger. Every task resolves its capability and re-verifies the target's scope before a single function runs.
 
 ---
 
+## What's in v2.2 — OpenCode in the terminal
+
+The upstream [`sst/opencode`](https://github.com/sst/opencode) surface (MIT, v2.2.7) is integrated as a **contract-only, governed workbench** — not a live Bun CLI, LLM provider or server. `src/17-opencode.js` models 41 tools, 7 built-in agents/subagents, 15 permission keys, sessions, todos, MCP-shaped resources/prompts, and a deterministic planner. Nothing is installed, spawned, fetched or written to disk.
+
+What is genuinely implemented and executable **offline**:
+
+| Surface | Implementation |
+|---|---|
+| **Virtual workspace** | 11 in-memory files. Real numbered `read`, `glob`, regex `grep`, `list`, `write`, `edit`, unified-diff `apply_patch`, LCS diffs and pattern-based LSP-like diagnostics. |
+| **Governed virtual shell** | `sh` interprets an allowlisted command set (`ls`, `tree`, `cat`, `head`, `tail`, `wc`, `grep`, `find`, `diff`, `git status`, `pwd`, `echo`, `node --test`, `help`). No OS process exists. |
+| **Agents & permissions** | `build`, `plan`, `general`, `explore`, `compaction`, `title`, `summary`; `allow` / `ask` / `deny` keys mirroring upstream. `webfetch`, `websearch`, `external_directory` and `doom_loop` are **hard-denied** and cannot be relaxed. Upstream's `edit` key gates `write`, `edit`, `apply_patch` and `patch`. |
+| **Human approval** | Every virtual write creates a pending approval with tool, agent, arguments and reason; a modal or the Approvals panel records APPROVE / DENY in the ledger. |
+| **Deterministic planner** | Keyword-driven multistep plans over the virtual workspace. `oc run "<goal>"` streams steps, marks todos and pauses at a write until a human decides. No model call. |
+| **Advanced shell** | `|` pipelines (grep/exclude/contains/head/tail/select/wc/sort/uniq/upper/lower/trim/prefix/json), `&&` and `;` chains, `$variables` + built-ins, aliases, in-memory scripts/macros, `repeat`, `panel`, `set`, `env`, `diff`, `diagnostics`, `tool <id> [json]`. |
+| **Live workbench UI** | Seven panels — Session, Files, Plan, Diff, Approvals, Tools, Audit — repainted after every command. Export unified diff and MCP contract manifest. |
+| **CLI parity** | `tools/aegis-terminal.mjs` exposes the same OpenCode commands, VFS, virtual shell, pipelines, variables, aliases, scripts and approval workflow. |
+
+```bash
+# Browser terminal (or local CLI)
+aegis ❯ oc help
+aegis ❯ oc status
+aegis ❯ oc tools deny
+aegis ❯ oc agents
+aegis ❯ oc plan "audit headers and fix app"
+aegis ❯ oc run "audit headers and fix app"     # pauses for human approval
+aegis ❯ oc approve <approval-id>
+aegis ❯ vfs ls
+aegis ❯ vfs cat src/app.js
+aegis ❯ vfs patch src/app.js "return res.send(eval(html));" "return res.send(safe(html));"
+aegis ❯ diff
+aegis ❯ vfs diagnostics
+aegis ❯ sh ls
+aegis ❯ tool webfetch {"url":"https://example.com"}   # REFUSED — hard-denied
+aegis ❯ set target demo && echo $target | upper | prefix "RESULT: "
+aegis ❯ alias pstatus status
+aegis ❯ script save smoke "vfs ls; oc status"
+aegis ❯ script run smoke
+aegis ❯ panel plan
+aegis ❯ oc mcp --json
+aegis ❯ audit verify
+```
+
+**Explicitly not wired:** the real `opencode` binary, `opencode serve`, `--auto` approval, model/provider calls, `bash`/`shell` on the host, outbound HTTP, real git worktrees, external filesystem paths, or an MCP server. Registry filtering upstream is catalog visibility, not execution authorization; here both are enforced in the same gate. `--auto` is not implemented: explicit `deny` always wins and writes always require a human decision.
+
 ## What's in v2.1
 
 ### Interactive terminal
 
-A new **AEGIS Terminal** view (20th console view) plus a **real CLI program** you can run in your own shell:
+The **AEGIS Terminal** view (20th console view) plus a **real CLI program** you can run in your own shell:
 
 ```bash
 node tools/aegis-terminal.mjs            # interactive REPL
 node tools/aegis-terminal.mjs --no-color # plain output
 ```
 
-Both are command interpreters, **not system shells**. No OS process is spawned, no socket is opened, no file is written. Features: command history (↑/↓), Tab completion, Ctrl+L clear, 30+ commands, ANSI output in the CLI, every command sealed in the ledger.
+Both are command interpreters, **not system shells**. No OS process is spawned, no socket is opened, no real file is written. Features: command history (↑/↓), Tab completion, Ctrl+L clear, 60+ commands, ANSI output in the CLI, every command sealed in the ledger.
 
 ```
 aegis ❯ help
@@ -64,27 +108,29 @@ Exposed through `hexstrike …`, `mcp …` and `run <tool>` commands, plus a dow
 
 ```
 index.html                       App shell (styles.css?v=… + dist/bundle.js?v=…)
-styles.css                       Complete visual system, incl. terminal
+styles.css                       Complete visual system, incl. terminal + workbench
 src/00-data.js                   Detection rules, playbooks, controls, samples
 src/05-data2.js                  ATT&CK matrix, capability manifest, orchestrator plan, samples
 src/10-engine.js                 SHA-256, log/header/IOC engines, scope gate, triage, compliance
 src/15-advanced.js               Normalization, attack chains, 5 lab engines, coverage, quant, copilot
 src/16-hexstrike.js              HexStrike AI v6.0 catalog, MCP manifest, policy gate, offline adapters
+src/17-opencode.js               OpenCode v2.2.7 contract: tools, agents, permissions, VFS, planner
 src/20-store.js                  State, persistence, append-only audit ledger
 src/30-ui.js                     Base console (11 views) + extension API
 src/40-ui2.js                    v2 console (8 views) + orchestrator
-src/45-terminal.js               Terminal view, command registry, HexStrike console
+src/45-terminal.js               Terminal view, command registry, OpenCode workbench UI
 scripts/build.mjs                Concatenates sorted src/*.js -> dist/bundle.js (no dependencies)
 dist/bundle.js                   Generated bundle (committed so Vercel needs no build step)
-tools/aegis-terminal.mjs         Local interactive CLI terminal
+tools/aegis-terminal.mjs         Local interactive CLI terminal with OpenCode parity
 tests/engine.test.mjs            v1 engine suite (10 tests)
 tests/advanced.test.mjs          v2 engine suite (14 tests)
 tests/hexstrike.test.mjs         HexStrike adapter suite (11 tests)
+tests/opencode.test.mjs          OpenCode workbench suite (8 tests)
 vercel.json                      Security headers + no-cache on the app shell
 deploy/bootstrap.html            Small files-only deployment fallback (uses __SHA__)
 ```
 
-> Module load order matters: `src/16-hexstrike.js` must load after `src/15-advanced.js`, and `src/45-terminal.js` after `src/30-ui.js`. The build script sorts `src/*.js` lexicographically. The base UI defers boot with `setTimeout(0)` so every extension module registers before first paint.
+> Module load order matters: `src/16-hexstrike.js` and `src/17-opencode.js` must load after `src/15-advanced.js`, and `src/45-terminal.js` after `src/30-ui.js`. The build script sorts `src/*.js` lexicographically. The base UI defers boot with `setTimeout(0)` so every extension module registers before first paint.
 
 ## Run locally
 
@@ -98,10 +144,10 @@ Rebuild after editing `src/`, then run all suites:
 
 ```bash
 node scripts/build.mjs
-node --test tests/engine.test.mjs tests/advanced.test.mjs tests/hexstrike.test.mjs
+node --test tests/engine.test.mjs tests/advanced.test.mjs tests/hexstrike.test.mjs tests/opencode.test.mjs
 ```
 
-A jsdom DOM smoke suite (outside the repo) additionally exercises all 20 views, the defer-boot path, and every terminal command.
+43/43 Node tests. A jsdom DOM smoke suite (outside the repo) additionally exercises all 20 views, the defer-boot path, every v2.1 terminal command, and the full v2.2 OpenCode workbench (including approvals, pipelines, aliases, scripts and ledger integrity).
 
 ## Deployment
 
@@ -113,12 +159,14 @@ If a Git-connected deployment is unavailable, `deploy/bootstrap.html` is a tiny 
 
 ## Rules of engagement (enforced in code)
 
-**In scope:** analyzing text you paste; assessing assets with a signed authorization record; explainable triage; mitigation guidance; defanged IOC correlation; local configuration analysis; tamper-evident logging; anything else added to the manifest in a reviewed commit.
+**In scope:** analyzing text you paste; assessing assets with a signed authorization record; explainable triage; mitigation guidance; defanged IOC correlation; local configuration analysis; virtual-workspace edits after human approval; tamper-evident logging; anything else added to the manifest in a reviewed commit.
 
-**Out of scope:** activity against systems without documented authorization; network scanning/probing; exploitation or payload delivery; credential attacks, persistence, evasion or lateral movement; autonomous external containment; sending operator data to third parties.
+**Out of scope:** activity against systems without documented authorization; network scanning/probing; exploitation or payload delivery; credential attacks, persistence, evasion or lateral movement; autonomous external containment; sending operator data to third parties; bypassing the scope gate.
 
 **HexStrike specifically:** catalog-only adapter. Offensive tool names are present so the operator can see *what was refused and why* — they are never executed. Adding an upstream server bridge would require a reviewed manifest change and explicit authorization records; it is intentionally not exposed on the public deployment.
 
+**OpenCode specifically:** contract-only workbench. The virtual workspace is the only "filesystem"; the governed virtual shell is the only "shell"; the deterministic planner is the only "model". `webfetch`, `websearch`, `external_directory`, `doom_loop`, real worktrees and host paths are hard-denied in code and cannot be enabled from the UI or CLI. No upstream binary, provider or MCP server is contacted.
+
 ## License
 
-MIT — see `LICENSE`. HexStrike AI upstream is also MIT; its catalog is attributed in `src/16-hexstrike.js`.
+MIT — see `LICENSE`. OpenCode and HexStrike AI upstream are also MIT; their contracts/catalogs are attributed in `src/17-opencode.js` and `src/16-hexstrike.js`. No upstream source code is vendored.
