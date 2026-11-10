@@ -698,4 +698,8 @@
     { label: 'Run Monte Carlo risk simulation', hint: 'ANALYZE', icon: 'chart', run: function () { U.navigate('quant'); U.$('quant-iterations') && U.doc.querySelector('[data-action="quant-run"]').click(); } },
     { label: 'Ask the investigation copilot', hint: 'ANALYZE', icon: 'search', run: function () { U.navigate('investigate'); } }
   ]);
+
+  // If the base module already booted (e.g. modules loaded individually),
+  // rebuild the palette and repaint so the v2 views/nav are visible immediately.
+  if (U.doc.querySelector('.shell')) { U.buildCommands(); U.render(); }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

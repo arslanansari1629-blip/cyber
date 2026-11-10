@@ -1031,7 +1031,7 @@
       countBy: countBy, short: short, sevRank: E.sevRank, assetOptions: assetOptions
     },
     modal: modal, closeModal: closeModal, toast: toast, navigate: navigate,
-    render: render, renderView: renderView, download: download, copy: copy,
+    render: render, renderView: renderView, buildCommands: buildCommands, download: download, copy: copy,
     trace: trace, sleep: sleep, executiveSummary: executiveSummary,
     registerNav: function (group, items) {
       var g = NAV.filter(function (x) { return x.group === group; })[0];
@@ -1060,6 +1060,10 @@
     }, 1000);
   }
 
+  // Defer past the end of the concatenated bundle so every extension module
+  // (src/40-ui2.js) can register views, actions and commands before first paint.
+  // A defer script sees readyState 'interactive', so the old `else boot()` ran
+  // before the extension module executed and rendered the v1 shell on first load.
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  else root.setTimeout(boot, 0);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
