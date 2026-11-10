@@ -4,13 +4,14 @@ A responsive, static cyber-security learning dashboard with an interactive **sim
 
 ## Run locally
 
-Serve the repository root with any static server, for example:
+Install dependencies and start Vite:
 
 ```sh
-python3 -m http.server 4173 --bind 0.0.0.0
+npm install
+npm run dev
 ```
 
-Then open `http://localhost:4173`.
+For a production build, run `npm run build`; the generated site is in `dist/`.
 
 ## Safe terminal commands
 
