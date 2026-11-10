@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070a0f" />
+  <meta name="description" content="NIGHTSHIFT — a safe, simulated cyber range for learning security workflows." />
+  <title>NIGHTSHIFT // Cyber Range</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="Nightshift home"><span class="brand-mark"><span></span><span></span><span></span></span><span>NIGHTSHIFT<small>CYBER RANGE</small></span></a>
+      <div class="workspace-label">WORKSPACE <span class="live-dot"></span></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item active" href="#overview"><span class="nav-icon">◫</span> Overview <span class="nav-key">01</span></a>
+        <a class="nav-item" href="#terminal"><span class="nav-icon">⌘</span> Terminal <span class="nav-key">02</span></a>
+        <a class="nav-item" href="#toolkit"><span class="nav-icon">⟡</span> Tool library <span class="nav-key">03</span></a>
+        <a class="nav-item" href="#activity"><span class="nav-icon">◷</span> Activity log <span class="nav-key">04</span></a>
+      </nav>
+      <div class="side-divider"></div>
+      <div class="workspace-label">TRAINING LABS</div>
+      <a class="lab-link" href="#toolkit"><span class="lab-symbol">◎</span><span>Web security<small>6 modules · beginner</small></span><span class="lab-arrow">↗</span></a>
+      <a class="lab-link" href="#toolkit"><span class="lab-symbol purple">◇</span><span>Network defense<small>4 modules · intermediate</small></span><span class="lab-arrow">↗</span></a>
+      <a class="lab-link" href="#toolkit"><span class="lab-symbol orange">⌁</span><span>Digital forensics<small>3 modules · beginner</small></span><span class="lab-arrow">↗</span></a>
+      <div class="sidebar-bottom"><div class="help-card"><div class="help-icon">?</div><div><strong>New to the range?</strong><p>Start with a guided tour of your safe lab.</p><button id="tourButton">Launch tour <span>→</span></button></div></div><div class="profile"><div class="avatar">OP</div><div><strong>Operator</strong><small>Local session</small></div><button class="more-button" aria-label="More options">···</button></div></div>
+    </aside>
+
+    <main class="main-content" id="overview">
+      <header class="topbar"><div class="breadcrumbs">Workspace <span>/</span> <strong>Overview</strong></div><div class="top-actions"><div class="system-pill"><span class="live-dot"></span> LAB SYSTEMS NORMAL</div><button class="icon-button" id="themeButton" title="Toggle contrast" aria-label="Toggle contrast">◐</button><button class="notification" aria-label="Notifications">♧<i></i></button><div class="avatar top-avatar">OP</div></div></header>
+      <section class="welcome-row"><div><div class="eyebrow"><span class="eyebrow-line"></span> TUESDAY, NOVEMBER 10, 2026</div><h1>Good evening, <span>Operator.</span></h1><p class="intro">Your isolated cyber range is ready. Learn, explore, and defend — safely.</p></div><button class="button-primary" id="newLab"><span>＋</span> New lab session</button></section>
+      <section class="stats-grid" aria-label="Session stats">
+        <article class="stat-card"><div class="stat-top"><span>LAB STATUS</span><span class="stat-icon green">◉</span></div><div class="stat-value">Ready<span class="stat-small">●</span></div><div class="stat-foot"><span class="green-text">All systems operational</span><span>01 / 01</span></div><div class="stat-rule"><i style="width:100%"></i></div></article>
+        <article class="stat-card"><div class="stat-top"><span>TOOLS AVAILABLE</span><span class="stat-icon blue">⌘</span></div><div class="stat-value">24<span class="stat-unit"> / 24</span></div><div class="stat-foot"><span>Safe learning simulators</span><span class="green-text">100%</span></div><div class="stat-rule blue-rule"><i style="width:100%"></i></div></article>
+        <article class="stat-card"><div class="stat-top"><span>SESSION TIME</span><span class="stat-icon purple">◷</span></div><div class="stat-value" id="sessionClock">00:00<span class="stat-unit">:00</span></div><div class="stat-foot"><span>Current workspace</span><span>Local only</span></div><div class="stat-rule purple-rule"><i style="width:62%"></i></div></article>
+        <article class="stat-card"><div class="stat-top"><span>SECURITY POSTURE</span><span class="stat-icon orange">⬡</span></div><div class="stat-value">Hardened</div><div class="stat-foot"><span>No external targets</span><span class="green-text">Protected</span></div><div class="stat-rule orange-rule"><i style="width:88%"></i></div></article>
+      </section>
+
+      <section class="work-grid">
+        <article class="panel terminal-panel" id="terminal">
+          <div class="panel-heading terminal-heading"><div class="heading-icon terminal-icon">⌘</div><div><h2>Lab terminal</h2><p>Simulated shell <span class="bullet">·</span> isolated environment</p></div><div class="terminal-controls"><span class="control-dot red"></span><span class="control-dot yellow"></span><span class="control-dot green"></span><button class="expand-button" id="clearTerminal" title="Clear terminal">↺</button></div></div>
+          <div class="terminal-meta"><span><i class="live-dot"></i> SAFE MODE ENABLED</span><span>nightshift@lab <b>~</b></span></div>
+          <div class="terminal-output" id="terminalOutput" aria-live="polite" aria-label="Terminal output"><div class="terminal-line muted">NIGHTSHIFT LAB SHELL <span class="version">v1.4.2</span></div><div class="terminal-line muted">Training environment initialized · no host access</div><div class="terminal-gap"></div><div class="terminal-line"><span class="prompt">operator@nightshift</span><span class="path">:~$</span> <span class="command-text">help</span></div><div class="terminal-line output-text">Welcome to the safe lab. Try <span class="inline-code">help</span>, <span class="inline-code">tools</span>, <span class="inline-code">status</span>, or <span class="inline-code">scan lab.local</span>.</div><div class="terminal-line output-text">Every command runs against a fictional training dataset.</div></div>
+          <form class="terminal-form" id="terminalForm" autocomplete="off"><span class="terminal-prompt"><span>operator@nightshift</span>:~$</span><input id="terminalInput" aria-label="Enter simulated command" placeholder="Type a safe lab command..." spellcheck="false" /><button type="submit" aria-label="Run command">↵</button></form>
+          <div class="quick-commands"><span>QUICK RUN</span><button data-command="help">help</button><button data-command="tools">tools</button><button data-command="status">status</button><button data-command="scan lab.local">scan lab.local</button></div>
+          <div class="terminal-notice"><span>ⓘ</span> This is a simulated terminal. It does not run Linux commands or access real systems.</div>
+        </article>
+        <article class="panel network-panel"><div class="panel-heading"><div class="heading-icon network-icon">⌁</div><div><h2>Lab topology</h2><p>Private training network</p></div><button class="more-button panel-more" aria-label="More topology options">···</button></div><div class="topology"><div class="topo-grid"></div><svg class="topo-lines" viewBox="0 0 440 205" preserveAspectRatio="none" aria-hidden="true"><path d="M95 95 L210 53 M95 105 L210 155 M230 53 L350 100 M230 155 L350 105"/><path d="M95 100 L350 100" class="line-dash"/></svg><div class="node node-you"><span class="node-ring"><i></i></span><b>YOU</b><small>Operator</small></div><div class="node node-gateway"><span class="node-ring"><i></i></span><b>GATEWAY</b><small>192.168.56.1</small></div><div class="node node-target"><span class="node-ring"><i></i></span><b>LAB TARGET</b><small>lab.local</small></div><div class="node node-monitor"><span class="node-ring"><i></i></span><b>MONITOR</b><small>Defense node</small></div><div class="topo-label">ISOLATED VIRTUAL NETWORK <span>•</span> 4 NODES</div></div><div class="topology-foot"><span><i class="legend-dot"></i> Simulated node</span><span>Traffic: <b>0 B/s</b></span><button id="topologyButton">View topology <span>→</span></button></div></article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel tools-panel" id="toolkit"><div class="panel-heading"><div class="heading-icon tools-icon">⟡</div><div><h2>Security toolkit</h2><p>Curated tools for ethical learning</p></div><a class="text-link" href="#toolkit">View library <span>→</span></a></div><div class="tool-list">
+          <button class="tool-row" data-command="scan lab.local"><span class="tool-badge cyan">⌕</span><span class="tool-copy"><strong>Network Mapper</strong><small>Discover hosts in the sandbox</small></span><span class="tool-tag">RECON</span><span class="tool-launch">↗</span></button>
+          <button class="tool-row" data-command="inspect lab.local"><span class="tool-badge violet">⌁</span><span class="tool-copy"><strong>Web Inspector</strong><small>Review a fictional web app</small></span><span class="tool-tag purple-tag">ANALYSIS</span><span class="tool-launch">↗</span></button>
+          <button class="tool-row" data-command="audit demo.local"><span class="tool-badge amber">⌗</span><span class="tool-copy"><strong>Config Auditor</strong><small>Check sample security headers</small></span><span class="tool-tag amber-tag">DEFENSE</span><span class="tool-launch">↗</span></button>
+          <button class="tool-row" data-command="hash demo.txt"><span class="tool-badge green">⠿</span><span class="tool-copy"><strong>Hash Lab</strong><small>Learn file integrity basics</small></span><span class="tool-tag green-tag">CRYPTO</span><span class="tool-launch">↗</span></button>
+        </div></article>
+        <article class="panel activity-panel" id="activity"><div class="panel-heading"><div class="heading-icon activity-icon">◷</div><div><h2>Recent activity</h2><p>Local session events</p></div><button class="more-button panel-more" aria-label="More activity options">···</button></div><div class="activity-list" id="activityList"><div class="activity-item"><span class="activity-marker green-marker">⌘</span><div><strong>Safe terminal ready</strong><small>Simulated environment started</small></div><time>NOW</time></div><div class="activity-item"><span class="activity-marker blue-marker">⬡</span><div><strong>Lab network isolated</strong><small>4 fictional nodes available</small></div><time>1M</time></div><div class="activity-item"><span class="activity-marker purple-marker">⟡</span><div><strong>Tool library loaded</strong><small>24 educational simulators</small></div><time>1M</time></div></div><button class="activity-link" id="activityButton">View session log <span>→</span></button></article>
+      </section>
+      <footer class="footer"><span>© 2026 NIGHTSHIFT RANGE</span><span><i class="live-dot"></i> ALL SYSTEMS NOMINAL</span><a href="#overview">DOCUMENTATION ↗</a></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
