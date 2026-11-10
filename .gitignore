@@ -1,8 +1,0 @@
-node_modules/
-.cache/
-.DS_Store
-*.log
-.vercel
-.env
-.env.*
-!.env.example
