@@ -4,7 +4,9 @@
 (function (root) {
   'use strict';
   var DATA = root.AEGIS_DATA;
+  var DATA2 = root.AEGIS_DATA2;
   var E = root.AEGIS_ENGINE;
+  var A = root.AEGIS_ADVANCED;
   var KEY = 'aegis.sentinel.state.v1';
   var ZERO = '0000000000000000000000000000000000000000000000000000000000000000';
 
@@ -24,8 +26,17 @@
     },
 
     _migrate: function (s) {
+      var D2 = root.AEGIS_DATA2;
       s.drafts = s.drafts || {};
+      if (!s.drafts.ingest) s.drafts.ingest = D2.SAMPLES.jsonl;
+      if (!s.drafts.lab_email) s.drafts.lab_email = D2.SAMPLES.email;
+      if (!s.drafts.lab_iam) s.drafts.lab_iam = D2.SAMPLES.iam;
+      if (!s.drafts.lab_k8s) s.drafts.lab_k8s = D2.SAMPLES.k8s;
+      if (!s.drafts.lab_secrets) s.drafts.lab_secrets = D2.SAMPLES.secrets;
+      if (!s.drafts.lab_deps) s.drafts.lab_deps = D2.SAMPLES.deps;
+      if (!s.drafts.investigate) s.drafts.investigate = '';
       s.settings = s.settings || { operator: 'analyst@local', humanApproval: true, strictScope: true };
+      if (s.settings.automationLevel == null) s.settings.automationLevel = 'supervised';
       s.sweep = s.sweep || { running: false, log: [], lastRun: null, count: 0 };
       s.events = s.events || [];
       s.watchlist = s.watchlist || [];
@@ -33,6 +44,14 @@
       s.alerts = s.alerts || [];
       s.findings = s.findings || [];
       s.assets = s.assets || [];
+      s.cases = s.cases || [];
+      s.customRules = s.customRules || [];
+      s.ingestResults = s.ingestResults || null;
+      s.labResults = s.labResults || {};
+      s.orchestratorRuns = s.orchestratorRuns || [];
+      s.investigationHistory = s.investigationHistory || [];
+      s.capabilityRequests = s.capabilityRequests || [];
+      s.quantResult = s.quantResult || null;
       return s;
     },
 
@@ -67,13 +86,19 @@
           return { id: E.uid('evt'), ts: now - (12 - i * 3) * 60000, kind: e.kind, text: e.text, simulated: true };
         }),
         audit: [], watchlist: [], playbookProgress: {},
+        cases: [], customRules: [], ingestResults: null, labResults: {},
+        orchestratorRuns: [], investigationHistory: [], capabilityRequests: [], quantResult: null,
         logResults: null, headerResults: null, intelResults: null,
-        settings: { operator: 'analyst@local', humanApproval: true, strictScope: true },
+        settings: { operator: 'analyst@local', humanApproval: true, strictScope: true, automationLevel: 'supervised' },
         sweep: { running: false, log: [], lastRun: null, count: 0 },
         drafts: {
           logs: DATA.SAMPLE_LOGS,
           headers: DATA.SAMPLE_HEADERS,
           intel: DATA.SAMPLE_INTEL,
+          ingest: DATA2.SAMPLES.jsonl,
+          lab_email: DATA2.SAMPLES.email, lab_iam: DATA2.SAMPLES.iam,
+          lab_k8s: DATA2.SAMPLES.k8s, lab_secrets: DATA2.SAMPLES.secrets,
+          lab_deps: DATA2.SAMPLES.deps, investigate: '',
           asset: '', owner: '', authorizedBy: '', criticality: 'high', env: 'Production',
           checks: DATA.CHECK_TYPES.map(function (c) { return c.id; }),
           days: '90', confirmed: false
@@ -304,6 +329,109 @@
       var s = this._fresh();
       this.save();
       return s;
+    },
+
+    /* --------------------------- v2 subsystems ---------------------------- */
+    saveIngest: function (result, target) {
+      this.state.ingestResults = { result: result, target: target, at: Date.now() };
+      this.audit('UNIVERSAL_INGEST', target, 'COMPLETE',
+        result.format + ' format · ' + result.events.length + ' events normalized · ' + result.stats.tagged + ' tagged.');
+      this.event('detect', 'Ingest: ' + result.format + ' · ' + result.events.length + ' events · ' + result.stats.sources + ' sources.');
+      this.save();
+    },
+    saveLab: function (kind, result, target) {
+      this.state.labResults[kind] = { result: result, target: target, at: Date.now() };
+      this.audit('LAB_ANALYSIS_' + kind.toUpperCase(), target, 'COMPLETE',
+        kind + ' analysis executed locally; score ' + (result.score != null ? result.score : 'n/a') + '.');
+      this.event('detect', 'Analysis Lab · ' + kind + ' completed locally.');
+      this.save();
+    },
+    saveCustomRule: function (rule) {
+      if (!rule.pattern) return { ok: false, error: 'A regular expression is required.' };
+      var t = A.testCustomRule(rule, this.state.drafts.logs || '');
+      if (!t.ok) return { ok: false, error: 'Invalid regex: ' + t.error };
+      var rec = {
+        id: E.uid('rule'), name: String(rule.name || 'Custom rule').slice(0, 80),
+        pattern: String(rule.pattern).slice(0, 400), flags: 'i',
+        severity: rule.severity || 'medium', mitre: rule.mitre || 'T1059',
+        threshold: E.clamp(parseInt(rule.threshold, 10) || 1, 1, 50),
+        remediation: String(rule.remediation || 'Review matching events.').slice(0, 240),
+        createdAt: Date.now()
+      };
+      this.state.customRules.unshift(rec);
+      this.audit('DETECTION_RULE_ADD', rec.name, 'ADDED', 'Custom rule matches ' + t.count + ' line(s) in current telemetry.');
+      this.event('detect', 'Custom detection rule published: ' + rec.name);
+      this.save();
+      return { ok: true, rule: rec, test: t };
+    },
+    deleteCustomRule: function (id) {
+      var r = this.state.customRules.filter(function (x) { return x.id === id; })[0];
+      if (!r) return;
+      this.state.customRules = this.state.customRules.filter(function (x) { return x.id !== id; });
+      this.audit('DETECTION_RULE_REMOVE', r.name, 'REMOVED', 'Operator deleted the custom rule.');
+      this.save();
+    },
+    createCase: function (payload) {
+      var title = String(payload.title || '').trim();
+      if (!title) return { ok: false, error: 'A case title is required.' };
+      var c = {
+        id: E.uid('case'), title: title.slice(0, 120),
+        severity: payload.severity || 'high', status: 'open',
+        owner: this.state.settings.operator, asset: payload.asset || '—',
+        summary: String(payload.summary || '').slice(0, 600),
+        linkedAlerts: (payload.linkedAlerts || []).slice(0, 20),
+        notes: [], createdAt: Date.now(), updatedAt: Date.now()
+      };
+      this.state.cases.unshift(c);
+      this.audit('CASE_OPEN', c.id, 'OPENED', title + ' · severity ' + c.severity + ' · ' + c.linkedAlerts.length + ' linked alert(s).');
+      this.event('govern', 'Incident case opened: ' + title);
+      this.save();
+      return { ok: true, case: c };
+    },
+    addCaseNote: function (id, note) {
+      var c = this.state.cases.filter(function (x) { return x.id === id; })[0];
+      if (!c || !String(note || '').trim()) return false;
+      c.notes.unshift({ id: E.uid('note'), ts: Date.now(), actor: this.state.settings.operator, text: String(note).slice(0, 500) });
+      c.updatedAt = Date.now();
+      this.audit('CASE_NOTE', id, 'RECORDED', String(note).slice(0, 120));
+      this.save();
+      return true;
+    },
+    setCaseStatus: function (id, status) {
+      var c = this.state.cases.filter(function (x) { return x.id === id; })[0];
+      if (!c) return false;
+      c.status = status; c.updatedAt = Date.now();
+      this.audit('CASE_' + status.toUpperCase(), id, status.toUpperCase(), c.title);
+      this.event('govern', 'Case ' + c.title.slice(0, 40) + ' → ' + status.toUpperCase());
+      this.save();
+      return true;
+    },
+    recordOrchestratorRun: function (run) {
+      this.state.orchestratorRuns.unshift(run);
+      if (this.state.orchestratorRuns.length > 12) this.state.orchestratorRuns.length = 12;
+      this.audit('ORCHESTRATOR_RUN', run.target || 'all-scope', run.status,
+        run.done + ' of ' + run.total + ' tasks completed; ' + run.refused + ' refused; ' + run.durationMs + 'ms.');
+      this.event('agent', 'Orchestrator run ' + run.status + ': ' + run.done + '/' + run.total + ' tasks.');
+      this.save();
+    },
+    recordInvestigation: function (res) {
+      this.state.investigationHistory.unshift({ query: res.query, at: Date.now(), count: res.result.count, intent: res.result.type });
+      if (this.state.investigationHistory.length > 25) this.state.investigationHistory.length = 25;
+      this.audit('INVESTIGATION', res.result.type, 'QUERY', '"' + res.query + '" → ' + res.result.count + ' record(s).');
+      this.save();
+    },
+    recordCapabilityRequest: function (id, decision, reason) {
+      this.state.capabilityRequests.unshift({ id: id, decision: decision, reason: reason, at: Date.now(), actor: this.state.settings.operator });
+      if (this.state.capabilityRequests.length > 30) this.state.capabilityRequests.length = 30;
+      this.audit('CAPABILITY_REQUEST', id, decision, reason);
+      this.event(decision === 'REFUSED' ? 'refuse' : 'scope', 'Capability ' + id + ' → ' + decision + '.');
+      this.save();
+    },
+    saveQuant: function (result) {
+      this.state.quantResult = result;
+      this.audit('RISK_QUANT', 'portfolio', 'COMPLETE',
+        result.iterations + ' Monte Carlo iterations; p50 ' + result.p50 + ', p90 ' + result.p90 + ' (illustrative).');
+      this.save();
     },
 
     chainStatus: function () { return E.verifyChain(this.state.audit); }

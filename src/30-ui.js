@@ -78,8 +78,15 @@
   var ui = {
     view: 'overview', modal: null, palette: false, paletteQuery: '', paletteIndex: 0,
     selectedAsset: null, sweepLines: [], sweepRunning: false,
-    alertFilter: 'all', assetQuery: '', toasts: []
+    alertFilter: 'all', assetQuery: '', toasts: [],
+    labTab: 'email', orchestratorRunning: false, orchestratorNodes: {},
+    ingestFormat: 'auto', ingestResult: null, investigateQuery: '', investigateResult: null,
+    caseSelected: null, quantIterations: 2000
   };
+  /* Extension points consumed by src/40-ui2.js (v2 capability modules). */
+  var ACTION_HANDLERS = Object.create(null);
+  var FORM_HANDLERS = Object.create(null);
+  var EXTRA_COMMANDS = [];
 
   /* ---------------------------- tiny charts ----------------------------- */
   function activitySeries() {
@@ -157,7 +164,7 @@
         '<div class="side-foot"><div class="scope-mini"><div class="scope-mini-head"><span>AUTHORIZATION BOUNDARY</span><b>' + active + '/' + s.assets.length + '</b></div>' +
           '<div class="scope-track"><span style="width:' + Math.round(active / (s.assets.length || 1) * 100) + '%"></span></div>' +
           '<small>' + esc(s.settings.operator) + ' · local session</small></div>' +
-          '<div class="build">v1.0.0 · offline engine · <span>NO NETWORK EGRESS</span></div></div>' +
+          '<div class="build">v2.0.0 · 19 modules · <span>NO NETWORK EGRESS</span></div></div>' +
       '</aside>' +
       '<div class="workspace"><header class="topbar">' +
         '<div class="crumbs"><span>WORKSPACE</span><b>/</b><strong>' + esc(VIEWS[ui.view].label) + '</strong></div>' +
@@ -655,7 +662,7 @@
       { label: 'Verify audit hash chain', hint: 'GOVERN', icon: 'chain', run: function () { navigate('audit'); verifyChain(); } },
       { label: 'Export session / report', hint: 'GOVERN', icon: 'download', run: exportState },
       { label: 'Open executive summary', hint: 'GOVERN', icon: 'file', run: executiveSummary }
-    ]);
+    ].concat(EXTRA_COMMANDS));
   }
   function filteredCommands() {
     var q = ui.paletteQuery.toLowerCase();
@@ -875,6 +882,7 @@
       if (a === 'close-modal') { closeModal(); return; }
       if (a === 'palette-close') { ui.palette = false; renderPalette(); return; }
     }
+    if (ACTION_HANDLERS[a]) { ACTION_HANDLERS[a](t, ev, s); return; }
     switch (a) {
       case 'nav': navigate(t.getAttribute('data-view')); break;
       case 'palette-open': openPalette(); break;
@@ -961,6 +969,7 @@
     ev.preventDefault();
     var kind = form.getAttribute('data-form');
     var fd = new FormData(form);
+    if (FORM_HANDLERS[kind]) { FORM_HANDLERS[kind](form, fd); return; }
     if (kind === 'asset') {
       var payload = {
         name: fd.get('name'), type: fd.get('type'), owner: fd.get('owner'),
@@ -1011,6 +1020,31 @@
       if (found) { ev.preventDefault(); navigate(found); }
     }
   }
+
+  /* Public extension API. Loaded synchronously by 40-ui2.js before boot(). */
+  root.AEGIS_UI = {
+    DATA: DATA, E: E, S: S, ui: ui, $: $, doc: doc,
+    h: {
+      esc: esc, icon: icon, ts: ts, rel: rel, day: day, sevPill: sevPill,
+      statusPill: statusPill, section: section, kpi: kpi, bar: bar, donut: donut,
+      empty: empty, areaChart: areaChart, activitySeries: activitySeries,
+      countBy: countBy, short: short, sevRank: E.sevRank, assetOptions: assetOptions
+    },
+    modal: modal, closeModal: closeModal, toast: toast, navigate: navigate,
+    render: render, renderView: renderView, download: download, copy: copy,
+    trace: trace, sleep: sleep, executiveSummary: executiveSummary,
+    registerNav: function (group, items) {
+      var g = NAV.filter(function (x) { return x.group === group; })[0];
+      if (!g) { g = { group: group, items: [] }; NAV.push(g); }
+      items.forEach(function (i) { g.items.push(i); });
+    },
+    registerMeta: function (map) { Object.keys(map).forEach(function (k) { VIEWS[k] = map[k]; }); },
+    registerView: function (id, fn) { VIEWS_FUNC[id] = fn; },
+    getView: function (id) { return VIEWS_FUNC[id]; },
+    registerAction: function (name, fn) { ACTION_HANDLERS[name] = fn; },
+    registerForm: function (name, fn) { FORM_HANDLERS[name] = fn; },
+    registerCommands: function (list) { list.forEach(function (c) { EXTRA_COMMANDS.push(c); }); }
+  };
 
   function boot() {
     S.init();

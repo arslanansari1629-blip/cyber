@@ -1,44 +1,46 @@
-# AEGIS // SENTINEL
+# AEGIS // SENTINEL v2.0
 
-An **autonomous, authorization-bound defensive security operations console**. Static, zero-dependency, fully offline: all analysis executes in the browser on data the operator supplies. No backend, no API keys, no network egress, no exploitation capability.
+An **autonomous, authorization-bound defensive security operations platform**. Static, zero-dependency, fully offline: all 20+ analysis engines execute in the browser on data the operator supplies. No backend, no API keys, no network egress, no exploitation capability.
 
-> **Design boundary:** the agent is deliberately built to *refuse* anything outside a signed authorization scope. "Without authorization" operation is not a feature here — it is the exact failure mode the platform is designed to prevent, log, and make verifiable.
+> **Design boundary:** the agent can do *anything in its signed capability manifest* — and nothing outside it. "Without authorization" operation is the exact failure mode this platform prevents, logs, and makes verifiable in a hash-chained ledger. Every task resolves its capability and re-verifies the target's scope before a single function runs.
 
 ---
 
-## What it does
+## What v2 adds
 
-| Capability | Implementation |
+| Module | What it actually does |
 |---|---|
-| **Authorization gate** | Asset registry with owner attestation, accountable approver, expiry, least-privilege check-type allowlist, and a SHA-256 scope token. `scopeCheck()` runs before every agent/analysis action; `REFUSED` outcomes are written to the ledger. |
-| **Autonomous agent** | Multi-stage sweep with a live decision trace. Findings are generated **locally from a template catalog** and labelled `SIM` — no host is contacted. Out-of-scope, expired, revoked and unattested targets are refused. A one-click "attempt out-of-scope target" button demonstrates the hard refusal path. |
-| **Signal analyzer** | 16 real, MITRE ATT&CK-mapped detection rules over pasted logs: brute-force thresholds, success-after-failure correlation, SQLi, path traversal, XSS, command injection, web shells, scanner user agents, encoded payloads, C2 beacons, defense evasion, ransomware, cryptomining, secret exposure, and status-code anomalies. |
-| **Hardening analyzer** | 12 weighted HTTP-header controls (HSTS, CSP, XCTO, framing, referrer, permissions, cookies, version banners, CORS, cache, cross-origin isolation) with an A–F grade and copy-paste remediation. |
-| **Explainable triage** | Priority score from severity, confidence, asset criticality, correlated findings, local watchlist hits and signal age — with the full reasoning chain displayed for a human to review. |
-| **IOC workbench** | Extracts hashes, URLs, domains, IPs, emails and CVEs; defangs them for safe sharing; maintains a local correlation watchlist. No reputation service is queried. |
-| **Response playbooks** | Six NIST CSF-mapped incident checklists with persisted progress. |
-| **Control coverage** | Live evaluation against CIS Controls v8, NIST CSF 2.0 and MITRE ATT&CK derived from session evidence. |
-| **Audit ledger** | Append-only SHA-256 hash chain. Any edit or deletion breaks verification and is reported. |
-| **Operator UX** | Command palette (`Ctrl/⌘+K`), `Alt+1…0/P` navigation, executive summary, JSON export/import, toasts, responsive dark console, SVG charts, terminal trace. |
+| **Mission Orchestrator** | An 8-task dependency-ordered DAG. Each node resolves a capability in the signed manifest, re-checks scope, executes real local analysis, and seals its `DONE`/`REFUSED` outcome in the ledger. Live task graph + terminal trace. |
+| **Universal Ingest** | Per-line format detection for JSONL, nginx/apache combined, syslog/auth, CSV, generic (plus CloudTrail/Zeek-shaped JSON). Normalizes to a common event schema, tags every event with detection rules, reconstructs **multi-stage attack chains** with MITRE tactic progression and confidence, and runs z-score / IQR / EWMA anomaly detection on event rate. |
+| **Analysis Lab** | Five independent offline engines: phishing/.eml (SPF/DKIM/DMARC, Reply-To mismatch, relay chain, defanged URLs), IAM policy (wildcards, public principals, `PassRole`, MFA conditions, `NotAction`), Kubernetes manifests (privileged, host namespaces, root, capabilities, `hostPath`, tags, limits, seccomp), secret & entropy scanning (masked output, Shannon entropy), and dependency/SBOM analysis (package.json, lockfiles, CycloneDX, requirements against an offline advisory baseline). |
+| **Detection Studio** | ATT&CK Navigator-style heatmap across 14 tactics / 42 techniques, gap analysis, and an operator-authored regex rule engine with live testing. Custom rules join the orchestrator detection sweep. |
+| **Investigation Copilot** | Local natural-language query interpreter (intent + severity + asset + MITRE filter) over session evidence. Deterministic, no model call, audited. |
+| **Risk Quantification** | Deterministic Monte Carlo simulation over the open finding register with P50/P90/P95, distribution histogram and fully published assumptions. |
+| **Incident Cases** | Link alerts and evidence into an auditable case with append-only notes, status transitions and JSON export. |
+| **Capability Manifest** | Machine-readable list of 18 enabled operations and 6 explicitly blocked classes (network scanning, exploitation, credential attacks, persistence, autonomous external containment, scope bypass). A request form evaluates any identifier through the policy engine and logs the decision. |
 
-All state lives in `localStorage` (`aegis.sentinel.state.v1`). Baseline assets, alerts, findings and the activity chart are **simulated sample records** and are labelled as such in the UI; the analyzers, scope enforcement, triage scoring and hash chain are real deterministic code.
+Plus everything from v1: signed authorization scope with SHA-256 tokens and hard refusals, autonomous sweep, 16 MITRE-mapped log rules, 12 HTTP hardening controls, defanged IOC extraction, explainable triage, six NIST CSF playbooks, CIS/NIST control coverage, executive summary, JSON export, command palette, and a SHA-256 hash-chained audit ledger.
 
-Containment buttons are **workflow states only**. They record a human decision — they never block, isolate, or change any external system.
+**All state lives in `localStorage`.** Baseline assets, alerts, findings and the activity chart are simulated sample records and are labelled as such in the UI; every analyzer, the scope gate, triage scoring, orchestrator, coverage model and ledger are real deterministic code. Containment buttons are workflow states only — they never change an external system.
 
 ---
 
 ## Repository layout
 
 ```
-index.html                  App shell (loads styles.css + dist/bundle.js)
-styles.css                  Complete visual system
-src/00-data.js              Rule catalogs, playbooks, controls, sample data
-src/10-engine.js            SHA-256, detection, header/IOC engines, scope gate, triage, compliance
-src/20-store.js             State, persistence, append-only audit ledger
-src/30-ui.js                Console views, charts, dialogs, command palette, actions
+index.html                  App shell (styles.css + dist/bundle.js)
+styles.css                  Complete visual system, incl. v2 modules
+src/00-data.js              Detection rules, playbooks, controls, samples
+src/05-data2.js             ATT&CK matrix, capability manifest, orchestrator plan, samples
+src/10-engine.js            SHA-256, log/header/IOC engines, scope gate, triage, compliance
+src/15-advanced.js          Normalization, attack chains, 5 lab engines, coverage, quant, copilot
+src/20-store.js             State, persistence, append-only audit ledger, v2 subsystems
+src/30-ui.js                Base console (11 views) + extension API
+src/40-ui2.js               v2 console (8 views) + orchestrator + command palette entries
 scripts/build.mjs           Concatenates src/*.js -> dist/bundle.js (no dependencies)
 dist/bundle.js              Generated bundle (committed so Vercel needs no build step)
-tests/engine.test.mjs       Node test suite for the offline engine
+tests/engine.test.mjs       v1 engine suite (10 tests)
+tests/advanced.test.mjs     v2 engine suite (14 tests)
 vercel.json                 Security response headers
 deploy/bootstrap.html       Small files-only deployment fallback (uses __SHA__)
 ```
@@ -50,16 +52,16 @@ python3 -m http.server 8080 --bind 0.0.0.0
 # open http://localhost:8080
 ```
 
-Rebuild after editing anything in `src/`:
+Rebuild after editing `src/`, then run both suites:
 
 ```bash
 node scripts/build.mjs
-node --test tests/engine.test.mjs
+node --test tests/engine.test.mjs tests/advanced.test.mjs
 ```
 
 ## Deployment
 
-The project is a plain static site. The Vercel project `cyber-aegis` uses a no-op build (`true`) with output directory `.`, so the committed `dist/bundle.js` is served directly. `vercel.json` adds `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and a CSP. No environment variables or secrets are required.
+Plain static site on Vercel (`cyber-aegis`). The project uses a no-op build (`true`) with output directory `.`, so the committed `dist/bundle.js` is served directly. `vercel.json` adds `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and a CSP. No environment variables or secrets are required.
 
 If a Git-connected deployment is unavailable, `deploy/bootstrap.html` is a tiny fallback shell: replace `__SHA__` with the pushed commit SHA and deploy it as `index.html`. It fetches `styles.css` and `dist/bundle.js` from the repository (GitHub raw, with the GitHub Contents API as a secondary path) and injects them. The application itself still performs no network analysis.
 
@@ -67,7 +69,7 @@ If a Git-connected deployment is unavailable, `deploy/bootstrap.html` is a tiny 
 
 ## Rules of engagement (enforced in code)
 
-**In scope:** analyzing text you paste; assessing assets with a signed authorization record; explainable triage; mitigation guidance; defanged IOC correlation; tamper-evident logging.
+**In scope:** analyzing text you paste; assessing assets with a signed authorization record; explainable triage; mitigation guidance; defanged IOC correlation; local configuration analysis; tamper-evident logging; anything else added to the manifest in a reviewed commit.
 
 **Out of scope:** activity against systems without documented authorization; network scanning/probing; exploitation or payload delivery; credential attacks, persistence, evasion or lateral movement; autonomous external containment; sending operator data to third parties.
 

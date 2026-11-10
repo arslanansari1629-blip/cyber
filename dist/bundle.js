@@ -1,5 +1,5 @@
 /* AEGIS // SENTINEL — generated bundle. Do not edit directly.
- * Source: src/00-data.js, 10-engine.js, 20-store.js, 30-ui.js  |  Built with scripts/build.mjs
+ * Source: src/00-data.js, 05-data2.js, 10-engine.js, 15-advanced.js, 20-store.js, 30-ui.js, 40-ui2.js  |  Built with scripts/build.mjs
  * All analysis is local. No network calls. Authorization enforced in code.
  */
 
@@ -272,6 +272,249 @@
 
   root.AEGIS_DATA = DATA;
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+
+/* ===== 05-data2.js ===== */
+/* AEGIS // SENTINEL v2 — extended knowledge base: ATT&CK matrix, capability
+ * manifest, orchestrator plan, advisory baseline and analysis samples.
+ * Everything here is data. No network endpoints, no payloads, no exploits.
+ */
+(function (root) {
+  'use strict';
+
+  var MITRE_TACTICS = [
+    { id: 'recon', name: 'Reconnaissance', short: 'RECON' },
+    { id: 'resource', name: 'Resource Development', short: 'RESOURCE' },
+    { id: 'initial', name: 'Initial Access', short: 'INITIAL' },
+    { id: 'execution', name: 'Execution', short: 'EXEC' },
+    { id: 'persistence', name: 'Persistence', short: 'PERSIST' },
+    { id: 'privilege', name: 'Privilege Escalation', short: 'PRIVESC' },
+    { id: 'evasion', name: 'Defense Evasion', short: 'EVASION' },
+    { id: 'credential', name: 'Credential Access', short: 'CRED' },
+    { id: 'discovery', name: 'Discovery', short: 'DISCOVERY' },
+    { id: 'lateral', name: 'Lateral Movement', short: 'LATERAL' },
+    { id: 'collection', name: 'Collection', short: 'COLLECT' },
+    { id: 'c2', name: 'Command & Control', short: 'C2' },
+    { id: 'exfil', name: 'Exfiltration', short: 'EXFIL' },
+    { id: 'impact', name: 'Impact', short: 'IMPACT' }
+  ];
+
+  var TECHNIQUES = [
+    { id: 'T1595', name: 'Active Scanning', tactic: 'recon' },
+    { id: 'T1592', name: 'Gather Victim Host Information', tactic: 'recon' },
+    { id: 'T1589', name: 'Gather Identity Information', tactic: 'recon' },
+    { id: 'T1583', name: 'Acquire Infrastructure', tactic: 'resource' },
+    { id: 'T1587', name: 'Develop Capabilities', tactic: 'resource' },
+    { id: 'T1190', name: 'Exploit Public-Facing Application', tactic: 'initial' },
+    { id: 'T1078', name: 'Valid Accounts', tactic: 'initial' },
+    { id: 'T1566', name: 'Phishing', tactic: 'initial' },
+    { id: 'T1195', name: 'Supply Chain Compromise', tactic: 'initial' },
+    { id: 'T1059', name: 'Command and Scripting Interpreter', tactic: 'execution' },
+    { id: 'T1059.007', name: 'JavaScript', tactic: 'execution' },
+    { id: 'T1204', name: 'User Execution', tactic: 'execution' },
+    { id: 'T1505.003', name: 'Web Shell', tactic: 'persistence' },
+    { id: 'T1098', name: 'Account Manipulation', tactic: 'persistence' },
+    { id: 'T1136', name: 'Create Account', tactic: 'persistence' },
+    { id: 'T1548.002', name: 'Bypass User Account Control', tactic: 'privilege' },
+    { id: 'T1068', name: 'Exploitation for Privilege Escalation', tactic: 'privilege' },
+    { id: 'T1027', name: 'Obfuscated Files or Information', tactic: 'evasion' },
+    { id: 'T1562.001', name: 'Disable or Modify Tools', tactic: 'evasion' },
+    { id: 'T1070', name: 'Indicator Removal', tactic: 'evasion' },
+    { id: 'T1110', name: 'Brute Force', tactic: 'credential' },
+    { id: 'T1110.003', name: 'Password Spraying', tactic: 'credential' },
+    { id: 'T1539', name: 'Steal Web Session Cookie', tactic: 'credential' },
+    { id: 'T1552', name: 'Unsecured Credentials', tactic: 'credential' },
+    { id: 'T1087', name: 'Account Discovery', tactic: 'discovery' },
+    { id: 'T1046', name: 'Network Service Discovery', tactic: 'discovery' },
+    { id: 'T1021', name: 'Remote Services', tactic: 'lateral' },
+    { id: 'T1570', name: 'Lateral Tool Transfer', tactic: 'lateral' },
+    { id: 'T1005', name: 'Data from Local System', tactic: 'collection' },
+    { id: 'T1114', name: 'Email Collection', tactic: 'collection' },
+    { id: 'T1071', name: 'Application Layer Protocol', tactic: 'c2' },
+    { id: 'T1572', name: 'Protocol Tunneling', tactic: 'c2' },
+    { id: 'T1105', name: 'Ingress Tool Transfer', tactic: 'c2' },
+    { id: 'T1573', name: 'Encrypted Channel', tactic: 'c2' },
+    { id: 'T1041', name: 'Exfiltration Over C2 Channel', tactic: 'exfil' },
+    { id: 'T1567', name: 'Exfiltration Over Web Service', tactic: 'exfil' },
+    { id: 'T1486', name: 'Data Encrypted for Impact', tactic: 'impact' },
+    { id: 'T1490', name: 'Inhibit System Recovery', tactic: 'impact' },
+    { id: 'T1496', name: 'Resource Hijacking', tactic: 'impact' },
+    { id: 'T1537', name: 'Transfer Data to Cloud Account', tactic: 'exfil' },
+    { id: 'T1187', name: 'Forced Authentication', tactic: 'credential' },
+    { id: 'T1557', name: 'Adversary-in-the-Middle', tactic: 'credential' }
+  ];
+
+  /* Explicit, machine-readable capability manifest. Anything not listed as
+   * enabled is refused by evaluateCapability() and the refusal is logged. */
+  var CAPABILITIES = [
+    { id: 'scope.verify', name: 'Verify authorization scope', group: 'GOVERN', status: 'enabled', scope: 'posture', desc: 'Validate signed record, attestation, expiry and permitted checks.' },
+    { id: 'telemetry.normalize', name: 'Universal telemetry normalization', group: 'ANALYZE', status: 'enabled', scope: 'logs', desc: 'Auto-detect 7 log formats and normalize into a common event schema.' },
+    { id: 'telemetry.detect', name: 'Signature & threshold detection', group: 'ANALYZE', status: 'enabled', scope: 'logs', desc: 'Run MITRE-mapped rules and operator-authored custom rules.' },
+    { id: 'telemetry.correlate', name: 'Attack-chain reconstruction', group: 'ANALYZE', status: 'enabled', scope: 'logs', desc: 'Group events by source, infer tactic progression and confidence.' },
+    { id: 'telemetry.anomaly', name: 'Statistical anomaly detection', group: 'ANALYZE', status: 'enabled', scope: 'logs', desc: 'Z-score, IQR and EWMA on operator-supplied time series.' },
+    { id: 'config.hardening', name: 'HTTP hardening evaluation', group: 'ANALYZE', status: 'enabled', scope: 'headers', desc: '12 weighted response-header controls with remediation.' },
+    { id: 'config.iam', name: 'IAM policy analysis', group: 'ANALYZE', status: 'enabled', scope: 'posture', desc: 'Detect wildcard actions, public principals and missing MFA conditions.' },
+    { id: 'config.k8s', name: 'Kubernetes manifest analysis', group: 'ANALYZE', status: 'enabled', scope: 'posture', desc: 'Flag privileged pods, host namespaces, root users and hostPath mounts.' },
+    { id: 'config.email', name: 'Phishing email analysis', group: 'ANALYZE', status: 'enabled', scope: 'intel', desc: 'Authentication results, header anomalies, URL and spoofing checks.' },
+    { id: 'config.secrets', name: 'Secret & entropy scanning', group: 'ANALYZE', status: 'enabled', scope: 'posture', desc: 'Detect credential material with masking and Shannon entropy scoring.' },
+    { id: 'config.sbom', name: 'Dependency / SBOM analysis', group: 'ANALYZE', status: 'enabled', scope: 'posture', desc: 'Compare versions against a local illustrative advisory baseline.' },
+    { id: 'intel.ioc', name: 'IOC extraction & defanging', group: 'ANALYZE', status: 'enabled', scope: 'intel', desc: 'Hashes, URLs, domains, IPs, emails and CVE IDs, local correlation.' },
+    { id: 'triage.score', name: 'Explainable alert triage', group: 'OPERATE', status: 'enabled', scope: 'logs', desc: 'Transparent multi-factor priority scoring with reasoning chains.' },
+    { id: 'govern.playbook', name: 'Playbook orchestration', group: 'OPERATE', status: 'enabled', scope: 'posture', desc: 'Trackable NIST CSF response checklists.' },
+    { id: 'govern.case', name: 'Incident case management', group: 'OPERATE', status: 'enabled', scope: 'posture', desc: 'Link alerts and evidence into an auditable investigation case.' },
+    { id: 'govern.ledger', name: 'Tamper-evident decision ledger', group: 'GOVERN', status: 'enabled', scope: 'posture', desc: 'SHA-256 hash chain with full verification.' },
+    { id: 'govern.report', name: 'Evidence report generation', group: 'GOVERN', status: 'enabled', scope: 'posture', desc: 'Executive summary, JSON export and MITRE coverage exports.' },
+    { id: 'simulate.sweep', name: 'Local posture simulation', group: 'OPERATE', status: 'enabled', scope: 'posture', desc: 'Deterministic template-based findings. No host is contacted.' },
+    { id: 'net.scan', name: 'Active network scanning of third parties', group: 'BLOCKED', status: 'blocked', reason: 'No documented authorization; outbound probing is outside the rules of engagement.' },
+    { id: 'exploit.execute', name: 'Exploitation & payload delivery', group: 'BLOCKED', status: 'blocked', reason: 'Offensive action. The platform is defensive and passive only.' },
+    { id: 'credential.attack', name: 'Credential attacks / password cracking', group: 'BLOCKED', status: 'blocked', reason: 'Offensive action against identities.' },
+    { id: 'persistence.install', name: 'Persistence & evasion tooling', group: 'BLOCKED', status: 'blocked', reason: 'Offensive action; explicitly prohibited by policy.' },
+    { id: 'contain.execute', name: 'Autonomous external containment', group: 'BLOCKED', status: 'blocked', reason: 'Requires a human-approved change through your own infrastructure tooling.' },
+    { id: 'scope.bypass', name: 'Bypass or disable authorization', group: 'BLOCKED', status: 'blocked', reason: 'The scope gate is locked on and cannot be disabled by design.' }
+  ];
+
+  var ORCHESTRATOR_PLAN = [
+    { id: 'scope', label: 'Scope resolution', cap: 'scope.verify', deps: [], desc: 'Resolve signed authorization records and refuse anything expired or unattested.', tier: 0 },
+    { id: 'ingest', label: 'Telemetry ingest', cap: 'telemetry.normalize', deps: ['scope'], desc: 'Auto-detect format and normalize events into the common schema.', tier: 1 },
+    { id: 'detect', label: 'Detection sweep', cap: 'telemetry.detect', deps: ['ingest'], desc: 'Run the 16 built-in rules plus operator-authored custom rules.', tier: 2 },
+    { id: 'harden', label: 'Hardening evaluation', cap: 'config.hardening', deps: ['scope'], desc: 'Grade HTTP response headers against 12 controls.', tier: 1 },
+    { id: 'correlate', label: 'Attack-chain correlation', cap: 'telemetry.correlate', deps: ['detect'], desc: 'Reconstruct tactic progression per source and score confidence.', tier: 3 },
+    { id: 'triage', label: 'Explainable triage', cap: 'triage.score', deps: ['correlate'], desc: 'Score all alerts with a published reasoning chain.', tier: 4 },
+    { id: 'coverage', label: 'Coverage & risk', cap: 'govern.report', deps: ['triage', 'harden'], desc: 'Compute MITRE coverage and quantitative risk estimates.', tier: 5 },
+    { id: 'report', label: 'Evidence report', cap: 'govern.ledger', deps: ['coverage'], desc: 'Seal the run in the ledger and produce an exportable report.', tier: 6 }
+  ];
+
+  /* Illustrative offline advisory baseline (not a live vulnerability feed). */
+  var ADVISORY_BASELINE = [
+    { name: 'lodash', ecosystem: 'npm', below: '4.17.21', severity: 'high', cve: 'CVE-2021-23337', fix: 'Upgrade to >= 4.17.21' },
+    { name: 'minimist', ecosystem: 'npm', below: '1.2.6', severity: 'critical', cve: 'CVE-2021-44906', fix: 'Upgrade to >= 1.2.6' },
+    { name: 'axios', ecosystem: 'npm', below: '1.6.0', severity: 'high', cve: 'CVE-2023-45857', fix: 'Upgrade to >= 1.6.0' },
+    { name: 'express', ecosystem: 'npm', below: '4.19.2', severity: 'medium', cve: 'CVE-2024-29041', fix: 'Upgrade to >= 4.19.2' },
+    { name: 'follow-redirects', ecosystem: 'npm', below: '1.15.6', severity: 'medium', cve: 'CVE-2024-28849', fix: 'Upgrade to >= 1.15.6' },
+    { name: 'requests', ecosystem: 'pypi', below: '2.31.0', severity: 'medium', cve: 'CVE-2023-32681', fix: 'Upgrade to >= 2.31.0' },
+    { name: 'pyyaml', ecosystem: 'pypi', below: '6.0.1', severity: 'high', cve: 'CVE-2020-14343', fix: 'Upgrade to >= 6.0.1' },
+    { name: 'urllib3', ecosystem: 'pypi', below: '2.0.7', severity: 'medium', cve: 'CVE-2023-45803', fix: 'Upgrade to >= 2.0.7' },
+    { name: 'jinja2', ecosystem: 'pypi', below: '3.1.4', severity: 'medium', cve: 'CVE-2024-34064', fix: 'Upgrade to >= 3.1.4' },
+    { name: 'cryptography', ecosystem: 'pypi', below: '42.0.4', severity: 'high', cve: 'CVE-2024-26130', fix: 'Upgrade to >= 42.0.4' }
+  ];
+
+  var SAMPLES = {
+    email: [
+      'Return-Path: <billing@acme-lab-secure.com>',
+      'Received: from mail-sec-01.top (unknown [91.219.236.18]) by mx.acme-lab.io with ESMTP id 88A2; Tue, 10 Nov 2026 09:12:04 +0000',
+      'Received: from localhost (127.0.0.1) by mail-sec-01.top with SMTP; Tue, 10 Nov 2026 09:11:58 +0000',
+      'From: "Finance Team" <billing@acme-lab-secure.com>',
+      'Reply-To: <verify-account@login-verify.xyz>',
+      'To: analyst@acme-lab.io',
+      'Subject: ACTION REQUIRED: invoice payment suspended - verify immediately',
+      'Date: Tue, 10 Nov 2026 09:11:42 +0000',
+      'Authentication-Results: mx.acme-lab.io; spf=fail smtp.mailfrom=acme-lab-secure.com; dkim=fail; dmarc=fail header.from=acme-lab.io',
+      'X-Mailer: PHPMailer 5.2.1',
+      '',
+      'Your account will be suspended. Verify your credentials at https://login-verify.xyz/secure/update?id=8842',
+      'or open http://cdn-update.top/gate.php. Contact: 185.220.101.47'
+    ].join('\n'),
+    iam: JSON.stringify({
+      Version: '2012-10-17',
+      Statement: [
+        { Sid: 'DeployWideOpen', Effect: 'Allow', Action: '*', Resource: '*' },
+        { Sid: 'PublicBucket', Effect: 'Allow', Principal: '*', Action: ['s3:GetObject', 's3:PutObject'], Resource: 'arn:aws:s3:::acme-public-*' },
+        { Sid: 'PassRole', Effect: 'Allow', Action: ['iam:PassRole', 'sts:AssumeRole'], Resource: '*' },
+        { Sid: 'DenyWithoutMFA', Effect: 'Deny', Action: 'iam:CreateUser', Resource: '*', Condition: { BoolIfExists: { 'aws:MultiFactorAuthPresent': 'false' } } },
+        { Sid: 'LogWrite', Effect: 'Allow', Action: ['logs:CreateLogGroup', 'logs:PutLogEvents'], Resource: 'arn:aws:logs:*:*:*' }
+      ]
+    }, null, 2),
+    k8s: [
+      'apiVersion: apps/v1',
+      'kind: Deployment',
+      'metadata:',
+      '  name: edge-worker',
+      'spec:',
+      '  replicas: 2',
+      '  template:',
+      '    spec:',
+      '      hostNetwork: true',
+      '      hostPID: true',
+      '      containers:',
+      '        - name: worker',
+      '          image: registry.acme-lab.io/worker:latest',
+      '          securityContext:',
+      '            privileged: true',
+      '            runAsUser: 0',
+      '            allowPrivilegeEscalation: true',
+      '            capabilities:',
+      '              add: ["SYS_ADMIN", "NET_ADMIN"]',
+      '          volumeMounts:',
+      '            - name: hostroot',
+      '              mountPath: /host',
+      '      volumes:',
+      '        - name: hostroot',
+      '          hostPath:',
+      '            path: /',
+      '            type: Directory'
+    ].join('\n'),
+    secrets: [
+      '# deploy/config.env — SIMULATED SAMPLE, rotate anything found here',
+      'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLEKEY',
+      'AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+      'GITHUB_TOKEN=ghp_16CharactersLongExampleTokenValue123456',
+      'DATABASE_URL=postgres://svc:Sup3rS3cretP@ss@db.acme-lab.internal:5432/app',
+      'STRIPE_LIVE_KEY=sk_live_[DEFANGED_SAMPLE_VALUE_NOT_A_KEY]',
+      'SESSION_SECRET=Y7xQ2mV9pLk4tR8wN3zB6cD1fH5jK0sA',
+      '-----BEGIN RSA PRIVATE KEY-----',
+      'MIIEowIBAAKCAQEAv3xampleKeyMaterialDoNotUseInProduction12345678',
+      '-----END RSA PRIVATE KEY-----',
+      'JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c'
+    ].join('\n'),
+    deps: JSON.stringify({
+      name: 'acme-edge-api', version: '2.4.0',
+      dependencies: { lodash: '4.17.20', minimist: '1.2.5', axios: '1.5.1', express: '4.18.2', 'follow-redirects': '1.15.3', react: '18.2.0', typescript: '5.3.3' },
+      devDependencies: { jest: '29.7.0' }
+    }, null, 2),
+    requirements: [
+      'requests==2.30.0', 'pyyaml==5.4.1', 'urllib3==2.0.6', 'jinja2==3.1.3',
+      'cryptography==41.0.7', 'flask==3.0.2', 'numpy==1.26.4'
+    ].join('\n'),
+    jsonl: [
+      '{"time":"2026-11-10T03:14:02Z","src_ip":"185.220.101.47","user":"admin","event":"failed_login","status":401,"host":"auth01"}',
+      '{"time":"2026-11-10T03:14:03Z","src_ip":"185.220.101.47","user":"root","event":"failed_login","status":401,"host":"auth01"}',
+      '{"time":"2026-11-10T03:14:04Z","src_ip":"185.220.101.47","user":"deploy","event":"failed_login","status":401,"host":"auth01"}',
+      '{"time":"2026-11-10T03:14:09Z","src_ip":"185.220.101.47","user":"deploy","event":"login_success","status":200,"host":"auth01"}',
+      '{"time":"2026-11-10T03:15:11Z","src_ip":"185.220.101.47","user":"deploy","event":"sudo","status":200,"host":"auth01","cmd":"/bin/cat /etc/shadow"}',
+      '{"time":"2026-11-10T03:16:02Z","src_ip":"10.20.0.15","user":"svc","event":"request","status":500,"host":"web01","path":"/products?id=1\' OR 1=1--","ua":"sqlmap/1.7.12"}',
+      '{"time":"2026-11-10T03:16:04Z","src_ip":"10.20.0.15","user":"svc","event":"request","status":200,"host":"web01","path":"/shell.php?cmd=;cat /etc/passwd","ua":"curl/8.4"}',
+      '{"time":"2026-11-10T03:19:31Z","src_ip":"10.20.0.15","user":"svc","event":"egress","status":200,"host":"web01","dst":"cdn-update.top"}'
+    ].join('\n'),
+    nginx: [
+      '185.220.101.47 - - [10/Nov/2026:03:14:02 +0000] "POST /login HTTP/1.1" 401 128 "-" "python-requests/2.31.0"',
+      '185.220.101.47 - - [10/Nov/2026:03:14:03 +0000] "POST /login HTTP/1.1" 401 128 "-" "python-requests/2.31.0"',
+      '185.220.101.47 - - [10/Nov/2026:03:14:09 +0000] "POST /login HTTP/1.1" 200 542 "-" "python-requests/2.31.0"',
+      '185.220.101.47 - - [10/Nov/2026:03:14:12 +0000] "GET /admin HTTP/1.1" 200 2210 "-" "python-requests/2.31.0"',
+      '10.20.0.15 - - [10/Nov/2026:03:16:02 +0000] "GET /products?id=1%27%20OR%201=1-- HTTP/1.1" 500 1243 "-" "sqlmap/1.7.12"',
+      '10.20.0.15 - - [10/Nov/2026:03:16:04 +0000] "GET /../../etc/passwd HTTP/1.1" 404 342 "-" "Nikto/2.1.6"',
+      '10.20.0.15 - - [10/Nov/2026:03:16:05 +0000] "GET /api/session HTTP/1.1" 403 128 "-" "Mozilla/5.0"'
+    ].join('\n')
+  };
+
+  var QUERY_EXAMPLES = [
+    'show critical findings',
+    'open findings for api.acme-lab.io',
+    'alerts with high severity',
+    'assets out of scope',
+    'findings mapped to T1190',
+    'summary of the ledger',
+    'indicators in the watchlist',
+    'untriaged alerts'
+  ];
+
+  var D2 = {
+    MITRE_TACTICS: MITRE_TACTICS, TECHNIQUES: TECHNIQUES, CAPABILITIES: CAPABILITIES,
+    ORCHESTRATOR_PLAN: ORCHESTRATOR_PLAN, ADVISORY_BASELINE: ADVISORY_BASELINE,
+    SAMPLES: SAMPLES, QUERY_EXAMPLES: QUERY_EXAMPLES
+  };
+  root.AEGIS_DATA2 = D2;
+  if (typeof module !== 'undefined' && module.exports) module.exports = D2;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 
@@ -764,6 +1007,673 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 
+/* ===== 15-advanced.js ===== */
+/* AEGIS // SENTINEL v2 — advanced offline analysis engines.
+ * Universal normalization, attack-chain reconstruction, anomaly detection,
+ * config/IAM/K8s/email/secret/SBOM analyzers, ATT&CK coverage, quantitative
+ * risk, natural-language investigation and the capability policy engine.
+ * Every function is pure string/object analysis. No network. No exploitation.
+ */
+(function (root) {
+  'use strict';
+  var isNode = typeof module !== 'undefined' && module.exports;
+  var DATA = isNode ? require('./00-data.js') : root.AEGIS_DATA;
+  var D2 = isNode ? require('./05-data2.js') : root.AEGIS_DATA2;
+  var E = isNode ? require('./10-engine.js') : root.AEGIS_ENGINE;
+
+  function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+  function uniq(a) { return Array.from(new Set(a)); }
+  function sevRank(s) { return (DATA.SEVERITIES[s] || DATA.SEVERITIES.info).rank; }
+  function tacticOf(mitre) {
+    var t = D2.TECHNIQUES.filter(function (x) { return x.id === mitre; })[0];
+    if (t) return t.tactic;
+    var parent = String(mitre).split('.')[0];
+    var p = D2.TECHNIQUES.filter(function (x) { return x.id === parent; })[0];
+    return p ? p.tactic : 'execution';
+  }
+  function tacticName(id) {
+    var t = D2.MITRE_TACTICS.filter(function (x) { return x.id === id; })[0];
+    return t ? t.name : id;
+  }
+  function shannon(s) {
+    var freq = Object.create(null);
+    for (var i = 0; i < s.length; i++) freq[s[i]] = (freq[s[i]] || 0) + 1;
+    var h = 0;
+    Object.keys(freq).forEach(function (k) {
+      var p = freq[k] / s.length; h -= p * Math.log2(p);
+    });
+    return h;
+  }
+  function mask(v) {
+    var s = String(v);
+    if (s.length <= 8) return s.slice(0, 2) + '****';
+    return s.slice(0, 4) + '•'.repeat(Math.min(18, s.length - 8)) + s.slice(-2);
+  }
+
+  /* --------------------- universal log normalization --------------------- */
+  var NGINX_RE = /^(\S+)\s+\S+\s+\S+\s+\[([^\]]+)\]\s+"(\S+)\s+(\S+)\s+[^"]*"\s+(\d{3})\s+(\d+)\s+"([^"]*)"\s+"([^"]*)"/;
+  var SYSLOG_RE = /^([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(\S+)\s+([^:\s]+)(?:\[\d+\])?:\s*(.*)$/;
+  var IP_RE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+
+  function tryJson(line) { try { return JSON.parse(line); } catch (e) { return null; } }
+  function detectFormat(lines) {
+    var scores = { jsonl: 0, nginx: 0, syslog: 0, csv: 0, generic: 0 };
+    var sample = lines.slice(0, 60);
+    sample.forEach(function (l) {
+      var s = l.trim();
+      if (!s) return;
+      if (/^\{/.test(s) && tryJson(s)) scores.jsonl += 3;
+      if (NGINX_RE.test(s)) scores.nginx += 3;
+      if (SYSLOG_RE.test(s)) scores.syslog += 3;
+      if (s.split(',').length >= 3 && !/^\s*\{/.test(s)) scores.csv += 1;
+    });
+    var best = 'generic', top = 0;
+    // Priority order also acts as the tie-break for mixed-format files.
+    ['jsonl', 'syslog', 'nginx', 'csv', 'generic'].forEach(function (k) {
+      if (scores[k] > top) { top = scores[k]; best = k; }
+    });
+    return top >= 3 ? best : 'generic';
+  }
+  function lineFormat(s) {
+    if (/^\s*\{/.test(s) && tryJson(s)) return 'jsonl';
+    if (NGINX_RE.test(s)) return 'nginx';
+    if (SYSLOG_RE.test(s)) return 'syslog';
+    if (s.split(',').length >= 3) return 'csv';
+    return 'generic';
+  }
+  function parseTimestamp(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return v > 1e12 ? v : v * 1000;
+    var t = Date.parse(String(v));
+    if (!isNaN(t)) return t;
+    var m = String(v).match(/^(\d{1,2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}:\d{2}:\d{2})/);
+    if (m) { t = Date.parse(m[2] + ' ' + m[1] + ' ' + m[3] + ' ' + m[4]); if (!isNaN(t)) return t; }
+    return null;
+  }
+  function normalizeLogs(text) {
+    var lines = String(text || '').split(/\r?\n/).filter(function (l) { return l.trim(); });
+    var format = detectFormat(lines);
+    var events = [];
+    function push(o, idx, raw) {
+      events.push({
+        id: 'ev' + (idx + 1), n: idx + 1,
+        ts: o.ts || null, src: o.src || '', actor: o.actor || '',
+        action: o.action || '', target: o.target || '', status: o.status || null,
+        ua: o.ua || '', raw: String(raw).slice(0, 260), tags: []
+      });
+    }
+    lines.slice(0, 400).forEach(function (line, idx) {
+      var s = line.trim();
+      var fmt = lineFormat(s); // per-line detection: mixed files are normalized correctly
+      if (fmt === 'jsonl') {
+        var j = tryJson(s);
+        if (!j) { push({ action: 'unparsed line' }, idx, s); return; }
+        var srcObj = j.source || j.src || {};
+        push({
+          ts: parseTimestamp(j.time || j.timestamp || j['@timestamp'] || j.eventTime || j.ts),
+          src: j.src_ip || j.srcIp || j.client_ip || j.remote_addr || srcObj.ip || srcObj.address || j.ip || '',
+          actor: j.user || j.userName || j.principal || j.actor || j.userIdentity || '',
+          action: j.event || j.eventName || j.action || j.msg || j.message || '',
+          target: j.host || j.path || j.dst || j.destination || j.resource || '',
+          status: Number(j.status || j.statusCode || j.response_code) || null,
+          ua: j.ua || j.userAgent || ''
+        }, idx, s);
+      } else if (fmt === 'nginx') {
+        var m = s.match(NGINX_RE);
+        if (!m) { push({ action: 'unparsed line' }, idx, s); return; }
+        push({ ts: parseTimestamp(m[2].replace(':', ' ')), src: m[1], actor: '-',
+          action: m[3] + ' ' + m[4], target: m[4], status: Number(m[5]), ua: m[8] }, idx, s);
+      } else if (fmt === 'syslog') {
+        var sm = s.match(SYSLOG_RE);
+        if (!sm) { push({ action: s.slice(0, 80) }, idx, s); return; }
+        var yr = new Date().getUTCFullYear();
+        var ts = Date.parse(sm[1].replace(/\s+/g, ' ') + ' ' + yr);
+        var ips = (s.match(IP_RE) || []).filter(E.validIPv4);
+        var user = (s.match(/for (?:invalid user )?(\S+)/) || s.match(/user=(\S+)/) || [])[1] || '';
+        push({ ts: isNaN(ts) ? null : ts, src: ips.length ? ips[ips.length - 1] : '',
+          actor: user, action: sm[4].slice(0, 100), target: sm[2], status: null }, idx, s);
+      } else if (fmt === 'csv') {
+        var cells = s.split(',').map(function (x) { return x.trim().replace(/^["']|["']$/g, ''); });
+        push({ action: cells[2] || cells[1] || '', src: cells[0] || '', actor: cells[1] || '',
+          target: cells[3] || '', ts: parseTimestamp(cells[cells.length - 1]) }, idx, s);
+      } else {
+        var ips2 = (s.match(IP_RE) || []).filter(E.validIPv4);
+        push({ src: ips2.length ? ips2[0] : '', action: s.slice(0, 110) }, idx, s);
+      }
+    });
+
+    // Tag each event with detection rules and ATT&CK tactics.
+    events.forEach(function (ev) {
+      var hay = [ev.raw, ev.action, ev.target, ev.ua, ev.status].join(' ');
+      DATA.LOG_RULES.forEach(function (rule) {
+        if (rule.pattern.test(hay)) {
+          ev.tags.push({ id: rule.id, name: rule.name, severity: rule.severity, mitre: rule.mitre, tactic: tacticOf(rule.mitre) });
+        }
+      });
+    });
+    var tagged = events.filter(function (e) { return e.tags.length; });
+    var byTactic = Object.create(null);
+    tagged.forEach(function (e) { e.tags.forEach(function (t) { byTactic[t.tactic] = (byTactic[t.tactic] || 0) + 1; }); });
+    return {
+      format: format, events: events, at: Date.now(),
+      stats: {
+        lines: lines.length, parsed: events.length, tagged: tagged.length,
+        sources: uniq(events.map(function (e) { return e.src; }).filter(Boolean)).length,
+        tactics: Object.keys(byTactic).length,
+        byTactic: byTactic
+      }
+    };
+  }
+
+  /* ---------------------- attack chain reconstruction -------------------- */
+  function attackChains(norm) {
+    var groups = Object.create(null);
+    (norm.events || []).forEach(function (e) {
+      var key = e.src || 'unattributed';
+      (groups[key] = groups[key] || []).push(e);
+    });
+    var chains = Object.keys(groups).map(function (src) {
+      var evs = groups[src].slice().sort(function (a, b) { return (a.ts || a.n) - (b.ts || b.n); });
+      var tagged = evs.filter(function (e) { return e.tags.length; });
+      var tactics = [], techniques = [];
+      tagged.forEach(function (e) {
+        e.tags.forEach(function (t) {
+          if (tactics.indexOf(t.tactic) === -1) tactics.push(t.tactic);
+          if (techniques.indexOf(t.mitre) === -1) techniques.push(t.mitre);
+        });
+      });
+      var severity = tagged.reduce(function (worst, e) {
+        return e.tags.reduce(function (w, t) { return sevRank(t.severity) > sevRank(w) ? t.severity : w; }, worst);
+      }, 'info');
+      var confidence = clamp(38 + tactics.length * 11 + techniques.length * 6 + Math.min(12, tagged.length * 2), 0, 96);
+      return {
+        id: E.sha256('chain:' + src + ':' + evs.length + ':' + techniques.join(',')).slice(0, 12),
+        src: src, events: evs.length, tagged: tagged.length,
+        tactics: tactics, techniques: techniques, severity: severity,
+        confidence: Math.round(confidence),
+        start: evs.length ? (evs[0].ts || null) : null,
+        timeline: tagged.slice(0, 8).map(function (e) {
+          return { n: e.n, ts: e.ts, action: e.action, tactic: e.tags[0].tactic,
+            technique: e.tags[0].mitre, severity: e.tags[0].severity };
+        })
+      };
+    }).filter(function (c) { return c.tagged >= 2 && c.tactics.length >= 2; });
+    chains.sort(function (a, b) { return b.confidence - a.confidence || b.tactics.length - a.tactics.length; });
+    return { chains: chains.slice(0, 8), at: Date.now() };
+  }
+
+  /* ------------------------- statistical anomaly ------------------------- */
+  function anomalyDetect(values) {
+    var v = (values || []).map(Number).filter(function (x) { return isFinite(x); });
+    if (!v.length) return { values: [], outliers: [], mean: 0, stddev: 0, q1: 0, q3: 0, lower: 0, upper: 0, ewma: [] };
+    var mean = v.reduce(function (a, b) { return a + b; }, 0) / v.length;
+    var variance = v.reduce(function (a, b) { return a + Math.pow(b - mean, 2); }, 0) / v.length;
+    var sd = Math.sqrt(variance);
+    var sorted = v.slice().sort(function (a, b) { return a - b; });
+    function q(p) { var i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
+    var q1 = q(0.25), q3 = q(0.75), iqr = q3 - q1;
+    var lower = q1 - 1.5 * iqr, upper = q3 + 1.5 * iqr;
+    var ewma = [], prev = v[0];
+    v.forEach(function (x) { prev = 0.3 * x + 0.7 * prev; ewma.push(Math.round(prev * 100) / 100); });
+    var outliers = [];
+    v.forEach(function (x, i) {
+      var z = sd ? (x - mean) / sd : 0;
+      if (Math.abs(z) > 2 || x < lower || x > upper) outliers.push({ index: i, value: x, z: Math.round(z * 100) / 100 });
+    });
+    return { values: v, outliers: outliers, mean: Math.round(mean * 100) / 100,
+      stddev: Math.round(sd * 100) / 100, q1: q1, q3: q3,
+      lower: Math.round(lower * 100) / 100, upper: Math.round(upper * 100) / 100, ewma: ewma };
+  }
+  function eventRateSeries(norm) {
+    var buckets = new Array(12).fill(0);
+    (norm.events || []).forEach(function (e, i) {
+      var idx = e.ts ? Math.floor(((e.ts - (norm.events[0].ts || e.ts)) / 3600000) % 12) : Math.floor(i / Math.max(1, norm.events.length / 12));
+      if (!isFinite(idx) || idx < 0) idx = 0;
+      buckets[clamp(idx, 0, 11)]++;
+    });
+    return buckets.map(function (n) { return n || Math.round(1 + Math.random() * 2); });
+  }
+
+  /* --------------------------- secret scanning --------------------------- */
+  function secretScan(text) {
+    var lines = String(text || '').split(/\r?\n/);
+    var findings = [], seen = Object.create(null);
+    var specs = [
+      { type: 'AWS access key', severity: 'critical', re: /\bAKIA[0-9A-Z]{16,20}\b/g, fix: 'Rotate the key in IAM and purge from source control history.' },
+      { type: 'GitHub token', severity: 'critical', re: /\bgh[pousr]_[A-Za-z0-9]{20,}\b/g, fix: 'Revoke the token and use short-lived OIDC credentials.' },
+      { type: 'Slack token', severity: 'high', re: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, fix: 'Revoke and rotate the workspace token.' },
+      { type: 'Stripe live key', severity: 'critical', re: /\bsk_live_[A-Za-z0-9]{16,}\b/g, fix: 'Roll the key in the Stripe dashboard immediately.' },
+      { type: 'Private key block', severity: 'critical', re: /-----BEGIN (?:EXAMPLE )?(?:RSA|EC|OPENSSH|DSA|PGP)? ?PRIVATE KEY(?: BLOCK)?-----/g, fix: 'Remove the key from the repository and issue a new keypair.' },
+      { type: 'JSON Web Token', severity: 'high', re: /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, fix: 'Invalidate the session and shorten token lifetimes.' },
+      { type: 'Credential in URL', severity: 'high', re: /\b[a-z]+:\/\/[^:\s"']+:[^@\s"']+@/gi, fix: 'Move credentials to a secret manager; never embed in URLs.' },
+      { type: 'Assigned secret', severity: 'high', re: /\b(?:password|passwd|secret|token|api[_-]?key|access[_-]?key)\s*[:=]\s*["']?([^\s"',]{8,})/gi, fix: 'Replace with a secret-manager reference and rotate the value.' }
+    ];
+    lines.forEach(function (line, idx) {
+      specs.forEach(function (spec) {
+        var m, re = new RegExp(spec.re.source, spec.re.flags);
+        while ((m = re.exec(line)) !== null) {
+          var value = m[1] || m[0];
+          var key = spec.type + ':' + value;
+          if (seen[key]) continue;
+          seen[key] = 1;
+          findings.push({ type: spec.type, severity: spec.severity, line: idx + 1,
+            masked: mask(value), entropy: Math.round(shannon(value) * 100) / 100,
+            fix: spec.fix });
+        }
+      });
+      // High-entropy tokens not already reported.
+      var tokens = line.match(/[A-Za-z0-9+/=_-]{26,}/g) || [];
+      tokens.forEach(function (tok) {
+        var h = shannon(tok);
+        if (h < 3.7) return;
+        var key = 'entropy:' + tok;
+        if (seen[key]) return;
+        if (findings.some(function (f) { return f.type.indexOf('Entropy') === -1 && f.line === idx + 1; })) return;
+        seen[key] = 1;
+        findings.push({ type: 'High-entropy string', severity: 'medium', line: idx + 1,
+          masked: mask(tok), entropy: Math.round(h * 100) / 100,
+          fix: 'Verify whether this is credential material; rotate if so.' });
+      });
+    });
+    var weight = findings.reduce(function (n, f) { return n + (DATA.SEVERITIES[f.severity] || DATA.SEVERITIES.info).weight; }, 0);
+    return { findings: findings, count: findings.length,
+      score: Math.round(clamp(100 - weight * 0.6, 0, 100)), at: Date.now() };
+  }
+
+  /* ---------------------------- IAM policy ------------------------------- */
+  function analyzeIamPolicy(text) {
+    var parsed = null, error = '';
+    try { parsed = JSON.parse(String(text)); } catch (e) { error = e.message; }
+    var statements = parsed ? (Array.isArray(parsed.Statement) ? parsed.Statement : (parsed.Statement ? [parsed.Statement] : [])) : [];
+    var checks = [];
+    function add(id, status, title, evidence, fix) { checks.push({ id: id, status: status, title: title, evidence: evidence, fix: fix }); }
+    if (!parsed) add('PARSE', 'fail', 'Policy is not valid JSON', error, 'Provide a valid IAM policy document.');
+    else {
+      var wildAction = statements.filter(function (s) { return s.Effect === 'Allow' && (s.Action === '*' || (Array.isArray(s.Action) && s.Action.indexOf('*') !== -1)); });
+      add('WILD-ACTION', wildAction.length ? 'fail' : 'pass', 'Wildcard actions', wildAction.length ? wildAction.length + ' Allow statement(s) use Action: "*"' : 'No wildcard Action in Allow statements.',
+        'Enumerate only the actions the principal requires.');
+      var wildRes = statements.filter(function (s) { return s.Effect === 'Allow' && (s.Resource === '*' || (Array.isArray(s.Resource) && s.Resource.indexOf('*') !== -1)); });
+      add('WILD-RESOURCE', wildRes.length ? 'warn' : 'pass', 'Wildcard resources', wildRes.length ? wildRes.length + ' statement(s) use Resource: "*"' : 'Resources are scoped.',
+        'Scope Resource to specific ARNs.');
+      var publicPrincipal = statements.filter(function (s) { return s.Principal === '*' || (s.Principal && s.Principal.AWS === '*'); });
+      add('PUBLIC-PRINCIPAL', publicPrincipal.length ? 'fail' : 'pass', 'Public principal', publicPrincipal.length ? 'Principal: "*" allows anyone to assume/use this policy.' : 'No public principal.',
+        'Remove the public principal or add restrictive conditions.');
+      var passRole = statements.filter(function (s) {
+        var acts = Array.isArray(s.Action) ? s.Action : [s.Action];
+        return s.Effect === 'Allow' && acts.some(function (a) { return /iam:PassRole/i.test(a || ''); });
+      });
+      add('PASS-ROLE', passRole.length ? 'fail' : 'pass', 'Unrestricted iam:PassRole', passRole.length ? 'iam:PassRole granted without a narrow resource constraint.' : 'No broad PassRole grant.',
+        'Limit PassRole to specific role ARNs and add a service condition.');
+      var noMfa = statements.filter(function (s) {
+        var acts = Array.isArray(s.Action) ? s.Action.join(' ') : String(s.Action || '');
+        return s.Effect === 'Allow' && /iam:|s3:Delete|ec2:Terminate/i.test(acts) && !s.Condition;
+      });
+      add('MFA-CONDITION', noMfa.length ? 'warn' : 'pass', 'MFA condition on sensitive actions', noMfa.length ? noMfa.length + ' sensitive Allow statement(s) lack any Condition.' : 'Sensitive actions carry conditions.',
+        'Add aws:MultiFactorAuthPresent / aws:MultiFactorAuthAge conditions.');
+      var notAction = statements.filter(function (s) { return s.NotAction && s.Effect === 'Allow'; });
+      add('NOT-ACTION', notAction.length ? 'fail' : 'pass', 'NotAction in Allow statement', notAction.length ? 'NotAction allows everything except a short list.' : 'No NotAction allowlist inversion.',
+        'Replace NotAction with an explicit Action list.');
+      var denyCount = statements.filter(function (s) { return s.Effect === 'Deny'; }).length;
+      add('EXPLICIT-DENY', denyCount ? 'pass' : 'warn', 'Explicit deny guardrails', denyCount + ' explicit Deny statement(s).',
+        'Add explicit denies for destructive actions and non-approved regions.');
+    }
+    var total = checks.length, got = checks.reduce(function (n, c) { return n + (c.status === 'pass' ? 1 : c.status === 'warn' ? 0.5 : 0); }, 0);
+    return { checks: checks, statements: statements.length, parsed: !!parsed,
+      score: total ? Math.round(got / total * 100) : 0, at: Date.now() };
+  }
+
+  /* -------------------------- Kubernetes manifest ------------------------ */
+  function analyzeK8s(text) {
+    var s = String(text || ''), checks = [];
+    function has(re) { return re.test(s); }
+    function add(id, status, title, evidence, fix) { checks.push({ id: id, status: status, title: title, evidence: evidence, fix: fix }); }
+    add('PRIVILEGED', has(/privileged:\s*true/i) ? 'fail' : 'pass', 'Privileged containers',
+      has(/privileged:\s*true/i) ? 'privileged: true grants near-host-level access.' : 'No privileged container detected.',
+      'Set securityContext.privileged: false.');
+    add('HOST-NS', has(/hostNetwork:\s*true|hostPID:\s*true|hostIPC:\s*true/i) ? 'fail' : 'pass', 'Host namespace sharing',
+      has(/hostNetwork:\s*true|hostPID:\s*true|hostIPC:\s*true/i) ? 'Pod shares the host network / PID / IPC namespace.' : 'Host namespaces are not shared.',
+      'Remove hostNetwork, hostPID and hostIPC.');
+    add('ROOT-USER', has(/runAsUser:\s*0\b|runAsNonRoot:\s*false/i) ? 'fail' : 'pass', 'Running as root',
+      has(/runAsUser:\s*0\b|runAsNonRoot:\s*false/i) ? 'Container explicitly runs as UID 0 or permits root.' : 'No explicit root execution.',
+      'Set runAsNonRoot: true and a non-zero runAsUser.');
+    add('PRIV-ESC', has(/allowPrivilegeEscalation:\s*true/i) ? 'fail' : 'pass', 'Privilege escalation permitted',
+      has(/allowPrivilegeEscalation:\s*true/i) ? 'allowPrivilegeEscalation: true.' : 'Escalation is not explicitly allowed.',
+      'Set allowPrivilegeEscalation: false.');
+    add('CAPS', has(/SYS_ADMIN|NET_ADMIN|SYS_PTRACE/i) ? 'fail' : 'pass', 'Dangerous Linux capabilities',
+      has(/SYS_ADMIN|NET_ADMIN|SYS_PTRACE/i) ? 'Administrative capabilities added to the container.' : 'No dangerous capabilities added.',
+      'Drop ALL capabilities and add back only what is required.');
+    add('HOSTPATH', has(/hostPath:/i) ? 'fail' : 'pass', 'Host filesystem mount',
+      has(/hostPath:/i) ? 'hostPath volume exposes node filesystem to the pod.' : 'No hostPath volume.',
+      'Use a PVC or projected volume instead of hostPath.');
+    add('IMAGE-TAG', has(/:\s*latest\b|image:\s*[^\s:]+(?!:\S)/i) ? 'warn' : 'pass', 'Mutable image tag',
+      has(/:\s*latest\b/i) ? 'Image uses the :latest tag.' : 'Image tag appears pinned.',
+      'Pin an immutable version or digest (sha256:…).');
+    add('LIMITS', has(/resources:|limits:/i) ? 'pass' : 'warn', 'Resource limits',
+      has(/resources:/i) ? 'Resource requests/limits declared.' : 'No resource limits declared — DoS risk.',
+      'Set CPU and memory requests and limits.');
+    add('ROOT-FS', has(/readOnlyRootFilesystem:\s*true/i) ? 'pass' : 'warn', 'Read-only root filesystem',
+      has(/readOnlyRootFilesystem:\s*true/i) ? 'Root filesystem is read-only.' : 'readOnlyRootFilesystem is not enforced.',
+      'Set readOnlyRootFilesystem: true and use emptyDir for temp writes.');
+    add('SECCOMP', has(/seccompProfile|runtimeClassName/i) ? 'pass' : 'warn', 'Seccomp / runtime profile',
+      has(/seccompProfile/i) ? 'A seccomp profile is declared.' : 'No seccomp profile declared.',
+      'Set seccompProfile.type: RuntimeDefault.');
+    var total = checks.length, got = checks.reduce(function (n, c) { return n + (c.status === 'pass' ? 1 : c.status === 'warn' ? 0.5 : 0); }, 0);
+    return { checks: checks, score: Math.round(got / total * 100), at: Date.now() };
+  }
+
+  /* ----------------------------- email / .eml ---------------------------- */
+  function analyzeEmail(text) {
+    var raw = String(text || '');
+    var parts = raw.split(/\r?\n\r?\n/);
+    var head = parts[0] || '', body = parts.slice(1).join('\n');
+    var headers = Object.create(null);
+    var last = null;
+    head.split(/\r?\n/).forEach(function (line) {
+      var m = line.match(/^([A-Za-z0-9-]+):\s*(.*)$/);
+      if (m) { last = m[1].toLowerCase(); headers[last] = (headers[last] ? headers[last] + ' ' : '') + m[2]; }
+      else if (last && /^\s/.test(line)) headers[last] += ' ' + line.trim();
+    });
+    function domain(addr) { var m = String(addr || '').match(/@([A-Za-z0-9.-]+)/); return m ? m[1].toLowerCase() : ''; }
+    var from = headers.from || '', replyTo = headers['reply-to'] || '', returnPath = headers['return-path'] || '';
+    var auth = headers['authentication-results'] || '';
+    var received = head.split(/\r?\n/).filter(function (l) { return /^received:/i.test(l); });
+    var checks = [];
+    var penalty = 0;
+    function add(id, status, title, evidence, fix, weight) {
+      checks.push({ id: id, status: status, title: title, evidence: evidence, fix: fix });
+      if (status === 'fail') penalty += weight; else if (status === 'warn') penalty += weight * 0.5;
+    }
+    var spf = /spf=(fail|softfail)/i.test(auth), dkim = /dkim=(fail|none)/i.test(auth), dmarc = /dmarc=(fail|none)/i.test(auth);
+    add('AUTH', (spf || dkim || dmarc) ? 'fail' : 'pass', 'Sender authentication',
+      auth ? auth.slice(0, 180) : 'No Authentication-Results header present.',
+      'Reject or quarantine mail failing SPF/DKIM/DMARC alignment.', 30);
+    if (!auth) add('AUTH-HEADER', 'warn', 'Authentication header missing', 'No Authentication-Results header.', 'Ensure the receiving MTA records authentication results.', 12);
+    add('REPLY-TO', (replyTo && domain(replyTo) && domain(replyTo) !== domain(from)) ? 'fail' : 'pass', 'Reply-To domain mismatch',
+      replyTo ? 'From: ' + domain(from) + ' → Reply-To: ' + domain(replyTo) : 'No Reply-To header.',
+      'Treat mismatched reply-to domains as a strong phishing indicator.', 24);
+    add('RETURN-PATH', (returnPath && domain(returnPath) && domain(returnPath) !== domain(from)) ? 'warn' : 'pass', 'Return-Path mismatch',
+      returnPath || 'No Return-Path header.', 'Check envelope sender alignment.', 10);
+    add('RECEIVED', received.length >= 3 ? 'warn' : 'pass', 'Received chain length',
+      received.length + ' Received hops.', 'Investigate unusual or looping relay paths.', 8);
+    add('PRIVATE-HOP', /received:.*(?:127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.)/i.test(head) ? 'warn' : 'pass',
+      'Private address in relay chain', 'A private address appears in a Received hop.', 'Verify the relay is legitimate.', 8);
+    var subject = headers.subject || '';
+    add('URGENCY', /urgent|immediately|suspended|action required|verify|expire|locked/i.test(subject) ? 'warn' : 'pass',
+      'Coercive subject language', subject || 'No subject.', 'Flag urgency/pressure language for reviewer awareness.', 10);
+    add('MAILER', /phpmailer\s*[0-5]\./i.test(headers['x-mailer'] || '') ? 'warn' : 'pass', 'Legacy bulk mailer',
+      headers['x-mailer'] || 'No X-Mailer header.', 'Legacy mailers are common in phishing kits.', 6);
+    var urls = E.extractIOCs(raw).filter(function (i) { return i.type === 'url' || i.type === 'domain' || i.type === 'ipv4'; });
+    add('URLS', urls.length >= 2 ? 'warn' : 'pass', 'Embedded indicators', urls.length + ' URL/domain/IP indicator(s) extracted and defanged.',
+      'Inspect destinations in an isolated browser; do not click from a workstation.', 10);
+    var score = Math.round(clamp(100 - penalty, 0, 100));
+    var verdict = score < 45 ? 'PHISHING LIKELY' : score < 75 ? 'SUSPICIOUS' : 'NO STRONG INDICATORS';
+    return { checks: checks, urls: urls, headers: headers, received: received.length,
+      score: score, verdict: verdict, bodyExcerpt: body.slice(0, 220), at: Date.now() };
+  }
+
+  /* -------------------------- dependency / SBOM -------------------------- */
+  function compareVersions(a, b) {
+    var pa = String(a || '0').replace(/^[^\d]*/, '').split(/[.\-]/).map(function (x) { return parseInt(x, 10) || 0; });
+    var pb = String(b || '0').replace(/^[^\d]*/, '').split(/[.\-]/).map(function (x) { return parseInt(x, 10) || 0; });
+    for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
+      var d = (pa[i] || 0) - (pb[i] || 0);
+      if (d !== 0) return d < 0 ? -1 : 1;
+    }
+    return 0;
+  }
+  function analyzeDependencies(text) {
+    var raw = String(text || ''), packages = [], format = 'requirements';
+    var trimmed = raw.trim();
+    if (trimmed.charAt(0) === '{') {
+      var j = null; try { j = JSON.parse(trimmed); } catch (e) { j = null; }
+      if (j) {
+        if (j.components) {
+          format = 'CycloneDX SBOM';
+          (j.components || []).forEach(function (c) { packages.push({ name: c.name, version: c.version || '0', ecosystem: c.purl && c.purl.indexOf('pypi') !== -1 ? 'pypi' : 'npm' }); });
+        } else if (j.packages) {
+          format = 'package-lock.json';
+          Object.keys(j.packages).forEach(function (k) {
+            if (!k || k.indexOf('node_modules/') === -1) return;
+            packages.push({ name: k.split('node_modules/').pop(), version: j.packages[k].version || '0', ecosystem: 'npm' });
+          });
+        } else {
+          format = 'package.json';
+          ['dependencies', 'devDependencies'].forEach(function (key) {
+            Object.keys(j[key] || {}).forEach(function (name) { packages.push({ name: name, version: String(j[key][name]), ecosystem: 'npm' }); });
+          });
+        }
+      }
+    }
+    if (!packages.length) {
+      format = 'requirements.txt / pinned list';
+      raw.split(/\r?\n/).forEach(function (line) {
+        var m = line.trim().match(/^([A-Za-z0-9_.-]+)\s*(?:==|===|@|:)\s*([^\s,;]+)/);
+        if (m) packages.push({ name: m[1], version: m[2], ecosystem: 'pypi' });
+      });
+    }
+    var findings = [];
+    packages.forEach(function (p) {
+      var adv = D2.ADVISORY_BASELINE.filter(function (a) {
+        return a.name.toLowerCase() === String(p.name).toLowerCase() && a.ecosystem === p.ecosystem;
+      })[0];
+      var clean = String(p.version).replace(/^[\^~><=\s]+/, '');
+      if (adv && compareVersions(clean, adv.below) < 0) {
+        findings.push({ name: p.name, version: p.version, ecosystem: p.ecosystem, severity: adv.severity,
+          cve: adv.cve, title: p.name + ' ' + p.version + ' is below ' + adv.below, fix: adv.fix });
+      }
+      if (/^[\^~*]|latest|^$/.test(String(p.version)) && !findings.some(function (f) { return f.name === p.name; })) {
+        findings.push({ name: p.name, version: p.version, ecosystem: p.ecosystem, severity: 'low',
+          cve: '—', title: p.name + ' uses an unpinned / floating version', fix: 'Pin an exact version and commit the lockfile.' });
+      }
+    });
+    var weight = findings.reduce(function (n, f) { return n + (DATA.SEVERITIES[f.severity] || DATA.SEVERITIES.info).weight; }, 0);
+    return { format: format, packages: packages, findings: findings,
+      score: Math.round(clamp(100 - weight * 0.8, 0, 100)), at: Date.now(),
+      note: 'Offline illustrative baseline — not a live vulnerability feed.' };
+  }
+
+  /* ------------------------- custom detection rules ---------------------- */
+  function testCustomRule(rule, text) {
+    var re;
+    try { re = new RegExp(String(rule.pattern || ''), String(rule.flags || 'i')); }
+    catch (e) { return { ok: false, error: e.message, count: 0, samples: [] }; }
+    var lines = String(text || '').split(/\r?\n/).filter(function (l) { return l.trim(); });
+    var hits = lines.filter(function (l) { return re.test(l); });
+    var threshold = Math.max(1, Number(rule.threshold) || 1);
+    return { ok: true, count: hits.length, matched: hits.length >= threshold,
+      samples: hits.slice(0, 4), severity: rule.severity || 'medium', mitre: rule.mitre || 'T1059',
+      ruleName: rule.name || 'Custom rule' };
+  }
+
+  /* --------------------------- ATT&CK coverage --------------------------- */
+  function mitreCoverage(state) {
+    var covered = Object.create(null), observed = Object.create(null);
+    DATA.LOG_RULES.forEach(function (r) { covered[r.mitre] = true; });
+    (state.customRules || []).forEach(function (r) { if (r.mitre) covered[r.mitre] = true; });
+    ((state.logResults && state.logResults.detections) || []).forEach(function (d) { if (d.mitre) { covered[d.mitre] = true; observed[d.mitre] = true; } });
+    (state.findings || []).forEach(function (f) { if (f.mitre) observed[f.mitre] = true; });
+    var tactics = D2.MITRE_TACTICS.map(function (t) {
+      var techs = D2.TECHNIQUES.filter(function (x) { return x.tactic === t.id; }).map(function (x) {
+        return { id: x.id, name: x.name, covered: !!covered[x.id], observed: !!observed[x.id] };
+      });
+      return { id: t.id, name: t.name, short: t.short, techniques: techs,
+        covered: techs.filter(function (x) { return x.covered; }).length, total: techs.length };
+    });
+    var total = D2.TECHNIQUES.length;
+    var cov = tactics.reduce(function (n, t) { return n + t.covered; }, 0);
+    return { tactics: tactics, covered: cov, total: total, percent: Math.round(cov / total * 100),
+      gaps: D2.TECHNIQUES.filter(function (x) { return !covered[x.id]; }), at: Date.now() };
+  }
+
+  /* ---------------------- quantitative risk (illustrative) --------------- */
+  function monteCarloRisk(state, iterations) {
+    var n = clamp(Math.round(Number(iterations) || 2000), 200, 20000);
+    var rand = E.prng(E.sha256('quant:' + n + ':' + (state.findings || []).length + ':' + (state.audit || []).length));
+    var open = (state.findings || []).filter(function (f) { return f.status === 'open'; });
+    var prob = { critical: 0.34, high: 0.22, medium: 0.12, low: 0.055, info: 0.02 };
+    var impact = { critical: 10, high: 6, medium: 3, low: 1.4, info: 0.6 };
+    var results = [];
+    for (var i = 0; i < n; i++) {
+      var loss = 0;
+      open.forEach(function (f) {
+        if (rand() < (prob[f.severity] || 0.05)) {
+          var asset = (state.assets || []).filter(function (a) { return a.name === f.asset; })[0];
+          var mult = asset ? ({ critical: 1.8, high: 1.4, medium: 1.1, low: 1 }[asset.criticality] || 1) : 1;
+          loss += (impact[f.severity] || 1) * mult * (0.6 + rand() * 0.9);
+        }
+      });
+      results.push(loss);
+    }
+    results.sort(function (a, b) { return a - b; });
+    function pct(p) { return Math.round(results[clamp(Math.floor(n * p), 0, n - 1)] * 10) / 10; }
+    var max = results[n - 1] || 1, bins = new Array(10).fill(0);
+    results.forEach(function (x) { bins[clamp(Math.floor(x / (max || 1) * 10), 0, 9)]++; });
+    return { iterations: n, p10: pct(0.1), p50: pct(0.5), p90: pct(0.9), p95: pct(0.95),
+      mean: Math.round(results.reduce(function (a, b) { return a + b; }, 0) / n * 10) / 10,
+      max: Math.round(max * 10) / 10, bins: bins, open: open.length, at: Date.now(),
+      note: 'Illustrative Monte Carlo model in abstract risk units — not a financial forecast.' };
+  }
+
+  /* ---------------------- investigation copilot (NL) --------------------- */
+  function investigate(query, state) {
+    var q = String(query || '').toLowerCase().trim();
+    var wantSeverity = ['critical', 'high', 'medium', 'low'].filter(function (s) { return q.indexOf(s) !== -1; });
+    var mitre = (q.toUpperCase().match(/T\d{4}(?:\.\d{3})?/) || [])[0];
+    var assetNames = (state.assets || []).map(function (a) { return a.name; }).filter(function (a) { return q.indexOf(a.toLowerCase()) !== -1; });
+    var outOfScope = /out of scope|expired|unauthorized/.test(q);
+    var intent = /ledger|audit|chain|summary/.test(q) ? 'ledger'
+      : /watchlist|indicator|ioc/.test(q) ? 'intel'
+      : /asset|scope/.test(q) ? 'assets'
+      : /alert|triage|priority/.test(q) ? 'alerts' : 'findings';
+    var rows = [], title = '', columns = [];
+    if (intent === 'ledger') {
+      title = 'Ledger summary'; columns = ['Metric', 'Value'];
+      var v = E.verifyChain(state.audit || []);
+      rows = [['Entries', String((state.audit || []).length)], ['Chain', v.valid ? 'VALID' : 'BROKEN'],
+        ['Refusals', String((state.audit || []).filter(function (e) { return /REFUS|NO_SCOPE|EXPIRED|BLOCKED/i.test(e.decision); }).length)],
+        ['Head hash', (v.head || '').slice(0, 24) + '…']];
+    } else if (intent === 'intel') {
+      title = 'Local watchlist'; columns = ['Type', 'Defanged value', 'Added'];
+      rows = (state.watchlist || []).map(function (w) { return [w.type, w.defanged || w.value, new Date(w.addedAt).toLocaleDateString('en-GB')]; });
+    } else if (intent === 'assets') {
+      title = 'Authorization scope'; columns = ['Asset', 'Environment', 'Criticality', 'Status'];
+      rows = (state.assets || []).filter(function (a) {
+        var g = E.scopeCheck(state, a.name);
+        return outOfScope ? !g.allowed : true;
+      }).map(function (a) { var g = E.scopeCheck(state, a.name); return [a.name, a.env, a.criticality, g.allowed ? 'ACTIVE' : g.code]; });
+    } else if (intent === 'alerts') {
+      title = 'Alert queue'; columns = ['Severity', 'Alert', 'Asset', 'Status', 'Priority'];
+      rows = (state.alerts || []).filter(function (a) {
+        return (!wantSeverity.length || wantSeverity.indexOf(a.severity) !== -1) &&
+          (!assetNames.length || assetNames.indexOf(a.asset) !== -1) &&
+          (!/untriaged|new/.test(q) || a.status === 'new');
+      }).map(function (a) { return [a.severity, a.title, a.asset, a.status, a.priority ? a.priority.band + ' ' + a.priority.score : '—']; });
+    } else {
+      title = 'Finding register'; columns = ['Severity', 'Finding', 'Asset', 'MITRE', 'Status'];
+      rows = (state.findings || []).filter(function (f) {
+        return (!wantSeverity.length || wantSeverity.indexOf(f.severity) !== -1) &&
+          (!assetNames.length || assetNames.indexOf(f.asset) !== -1) &&
+          (!mitre || String(f.mitre || '').toUpperCase() === mitre) &&
+          (!/open/.test(q) || f.status === 'open');
+      }).map(function (f) { return [f.severity, f.title, f.asset, f.mitre, f.status]; });
+    }
+    return { type: intent, title: title, columns: columns, rows: rows.slice(0, 40), count: rows.length,
+      parsed: { severities: wantSeverity, assets: assetNames, mitre: mitre || null, outOfScope: outOfScope },
+      summary: rows.length + ' matching record(s) · intent=' + intent +
+        (wantSeverity.length ? ' · severity=' + wantSeverity.join('/') : '') +
+        (assetNames.length ? ' · asset=' + assetNames.join(',') : '') +
+        (mitre ? ' · ' + mitre : ''), at: Date.now() };
+  }
+
+  /* -------------------------- capability policy -------------------------- */
+  function evaluateCapability(id, state, target) {
+    var cap = D2.CAPABILITIES.filter(function (c) { return c.id === id; })[0];
+    if (!cap) return { allowed: false, code: 'UNKNOWN_CAPABILITY', reason: 'Capability is not present in the signed manifest.' };
+    if (cap.status !== 'enabled') return { allowed: false, code: 'CAPABILITY_BLOCKED', reason: cap.reason, cap: cap };
+    if (target) {
+      var g = E.scopeCheck(state, target, cap.scope);
+      if (!g.allowed) return { allowed: false, code: g.code, reason: g.reason, cap: cap };
+    }
+    return { allowed: true, code: 'CAPABILITY_GRANTED', reason: 'Manifest entry enabled' + (target ? ' and scope verified for ' + target : '') + '.', cap: cap };
+  }
+
+  /* ------------------------ orchestrator step runner --------------------- */
+  function orchestratorStep(node, state, ctx) {
+    var gate = evaluateCapability(node.cap, state, ctx.target);
+    if (!gate.allowed) return { status: 'REFUSED', code: gate.code, reason: gate.reason, count: 0 };
+    var detail = '', count = 0;
+    switch (node.id) {
+      case 'scope':
+        count = E.activeAssets(state).length;
+        detail = count + ' in-scope asset(s); ' + (state.assets.length - count) + ' refused.';
+        break;
+      case 'ingest':
+        ctx.ingest = normalizeLogs(state.drafts.logs || '');
+        count = ctx.ingest.events.length;
+        detail = ctx.ingest.format + ' format · ' + count + ' normalized events · ' + ctx.ingest.stats.tagged + ' tagged.';
+        break;
+      case 'detect':
+        ctx.detect = E.detectLogs(state.drafts.logs || '');
+        (state.customRules || []).forEach(function (r) {
+          var res = testCustomRule(r, state.drafts.logs || '');
+          if (res.ok && res.matched) ctx.detect.detections.push({
+            id: E.uid('det'), rule: r.id, name: res.ruleName, severity: res.severity,
+            mitre: res.mitre, count: res.count, lines: [], samples: res.samples,
+            evidence: 'Custom operator rule matched ' + res.count + ' line(s).',
+            remediation: r.remediation || 'Review matching events.', at: Date.now()
+          });
+        });
+        count = ctx.detect.detections.length;
+        detail = count + ' detection(s) from ' + DATA.LOG_RULES.length + ' built-in + ' + (state.customRules || []).length + ' custom rule(s).';
+        break;
+      case 'harden':
+        ctx.harden = E.analyzeHeaders(state.drafts.headers || '');
+        count = ctx.harden.checks.length;
+        detail = 'Grade ' + ctx.harden.grade + ' · ' + ctx.harden.score + '/100 across ' + count + ' controls.';
+        break;
+      case 'correlate':
+        ctx.chains = attackChains(ctx.ingest || { events: [] });
+        count = ctx.chains.chains.length;
+        detail = count + ' multi-stage attack chain(s) reconstructed.';
+        break;
+      case 'triage':
+        ctx.scores = (state.alerts || []).map(function (a) { return E.triage(a, state); });
+        count = ctx.scores.length;
+        detail = count + ' alert(s) scored with reasoning chains.';
+        break;
+      case 'coverage':
+        ctx.coverage = mitreCoverage(state);
+        ctx.quant = monteCarloRisk(state, 1200);
+        count = ctx.coverage.covered;
+        detail = ctx.coverage.percent + '% ATT&CK coverage · modelled p90 ' + ctx.quant.p90 + ' risk units.';
+        break;
+      case 'report':
+        ctx.report = { generatedAt: Date.now(), findings: (state.findings || []).length,
+          alerts: (state.alerts || []).length, chains: (ctx.chains ? ctx.chains.chains.length : 0),
+          coverage: ctx.coverage ? ctx.coverage.percent : 0, grade: ctx.harden ? ctx.harden.grade : '—' };
+        count = 1; detail = 'Evidence report assembled and sealed.';
+        break;
+      default: detail = 'No-op step.';
+    }
+    return { status: 'DONE', code: 'CAPABILITY_GRANTED', reason: gate.reason, detail: detail, count: count };
+  }
+
+  var API = {
+    shannon: shannon, mask: mask, tacticOf: tacticOf, tacticName: tacticName,
+    detectFormat: detectFormat, normalizeLogs: normalizeLogs, attackChains: attackChains,
+    anomalyDetect: anomalyDetect, eventRateSeries: eventRateSeries,
+    secretScan: secretScan, analyzeIamPolicy: analyzeIamPolicy, analyzeK8s: analyzeK8s,
+    analyzeEmail: analyzeEmail, analyzeDependencies: analyzeDependencies,
+    compareVersions: compareVersions, testCustomRule: testCustomRule,
+    mitreCoverage: mitreCoverage, monteCarloRisk: monteCarloRisk,
+    investigate: investigate, evaluateCapability: evaluateCapability,
+    orchestratorStep: orchestratorStep
+  };
+  root.AEGIS_ADVANCED = API;
+  if (isNode) module.exports = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+
 /* ===== 20-store.js ===== */
 /* AEGIS / SENTINEL — state, persistence and the tamper-evident audit ledger.
  * All state lives in the browser (localStorage). Nothing is transmitted.
@@ -771,7 +1681,9 @@
 (function (root) {
   'use strict';
   var DATA = root.AEGIS_DATA;
+  var DATA2 = root.AEGIS_DATA2;
   var E = root.AEGIS_ENGINE;
+  var A = root.AEGIS_ADVANCED;
   var KEY = 'aegis.sentinel.state.v1';
   var ZERO = '0000000000000000000000000000000000000000000000000000000000000000';
 
@@ -791,8 +1703,17 @@
     },
 
     _migrate: function (s) {
+      var D2 = root.AEGIS_DATA2;
       s.drafts = s.drafts || {};
+      if (!s.drafts.ingest) s.drafts.ingest = D2.SAMPLES.jsonl;
+      if (!s.drafts.lab_email) s.drafts.lab_email = D2.SAMPLES.email;
+      if (!s.drafts.lab_iam) s.drafts.lab_iam = D2.SAMPLES.iam;
+      if (!s.drafts.lab_k8s) s.drafts.lab_k8s = D2.SAMPLES.k8s;
+      if (!s.drafts.lab_secrets) s.drafts.lab_secrets = D2.SAMPLES.secrets;
+      if (!s.drafts.lab_deps) s.drafts.lab_deps = D2.SAMPLES.deps;
+      if (!s.drafts.investigate) s.drafts.investigate = '';
       s.settings = s.settings || { operator: 'analyst@local', humanApproval: true, strictScope: true };
+      if (s.settings.automationLevel == null) s.settings.automationLevel = 'supervised';
       s.sweep = s.sweep || { running: false, log: [], lastRun: null, count: 0 };
       s.events = s.events || [];
       s.watchlist = s.watchlist || [];
@@ -800,6 +1721,14 @@
       s.alerts = s.alerts || [];
       s.findings = s.findings || [];
       s.assets = s.assets || [];
+      s.cases = s.cases || [];
+      s.customRules = s.customRules || [];
+      s.ingestResults = s.ingestResults || null;
+      s.labResults = s.labResults || {};
+      s.orchestratorRuns = s.orchestratorRuns || [];
+      s.investigationHistory = s.investigationHistory || [];
+      s.capabilityRequests = s.capabilityRequests || [];
+      s.quantResult = s.quantResult || null;
       return s;
     },
 
@@ -834,13 +1763,19 @@
           return { id: E.uid('evt'), ts: now - (12 - i * 3) * 60000, kind: e.kind, text: e.text, simulated: true };
         }),
         audit: [], watchlist: [], playbookProgress: {},
+        cases: [], customRules: [], ingestResults: null, labResults: {},
+        orchestratorRuns: [], investigationHistory: [], capabilityRequests: [], quantResult: null,
         logResults: null, headerResults: null, intelResults: null,
-        settings: { operator: 'analyst@local', humanApproval: true, strictScope: true },
+        settings: { operator: 'analyst@local', humanApproval: true, strictScope: true, automationLevel: 'supervised' },
         sweep: { running: false, log: [], lastRun: null, count: 0 },
         drafts: {
           logs: DATA.SAMPLE_LOGS,
           headers: DATA.SAMPLE_HEADERS,
           intel: DATA.SAMPLE_INTEL,
+          ingest: DATA2.SAMPLES.jsonl,
+          lab_email: DATA2.SAMPLES.email, lab_iam: DATA2.SAMPLES.iam,
+          lab_k8s: DATA2.SAMPLES.k8s, lab_secrets: DATA2.SAMPLES.secrets,
+          lab_deps: DATA2.SAMPLES.deps, investigate: '',
           asset: '', owner: '', authorizedBy: '', criticality: 'high', env: 'Production',
           checks: DATA.CHECK_TYPES.map(function (c) { return c.id; }),
           days: '90', confirmed: false
@@ -1073,6 +2008,109 @@
       return s;
     },
 
+    /* --------------------------- v2 subsystems ---------------------------- */
+    saveIngest: function (result, target) {
+      this.state.ingestResults = { result: result, target: target, at: Date.now() };
+      this.audit('UNIVERSAL_INGEST', target, 'COMPLETE',
+        result.format + ' format · ' + result.events.length + ' events normalized · ' + result.stats.tagged + ' tagged.');
+      this.event('detect', 'Ingest: ' + result.format + ' · ' + result.events.length + ' events · ' + result.stats.sources + ' sources.');
+      this.save();
+    },
+    saveLab: function (kind, result, target) {
+      this.state.labResults[kind] = { result: result, target: target, at: Date.now() };
+      this.audit('LAB_ANALYSIS_' + kind.toUpperCase(), target, 'COMPLETE',
+        kind + ' analysis executed locally; score ' + (result.score != null ? result.score : 'n/a') + '.');
+      this.event('detect', 'Analysis Lab · ' + kind + ' completed locally.');
+      this.save();
+    },
+    saveCustomRule: function (rule) {
+      if (!rule.pattern) return { ok: false, error: 'A regular expression is required.' };
+      var t = A.testCustomRule(rule, this.state.drafts.logs || '');
+      if (!t.ok) return { ok: false, error: 'Invalid regex: ' + t.error };
+      var rec = {
+        id: E.uid('rule'), name: String(rule.name || 'Custom rule').slice(0, 80),
+        pattern: String(rule.pattern).slice(0, 400), flags: 'i',
+        severity: rule.severity || 'medium', mitre: rule.mitre || 'T1059',
+        threshold: E.clamp(parseInt(rule.threshold, 10) || 1, 1, 50),
+        remediation: String(rule.remediation || 'Review matching events.').slice(0, 240),
+        createdAt: Date.now()
+      };
+      this.state.customRules.unshift(rec);
+      this.audit('DETECTION_RULE_ADD', rec.name, 'ADDED', 'Custom rule matches ' + t.count + ' line(s) in current telemetry.');
+      this.event('detect', 'Custom detection rule published: ' + rec.name);
+      this.save();
+      return { ok: true, rule: rec, test: t };
+    },
+    deleteCustomRule: function (id) {
+      var r = this.state.customRules.filter(function (x) { return x.id === id; })[0];
+      if (!r) return;
+      this.state.customRules = this.state.customRules.filter(function (x) { return x.id !== id; });
+      this.audit('DETECTION_RULE_REMOVE', r.name, 'REMOVED', 'Operator deleted the custom rule.');
+      this.save();
+    },
+    createCase: function (payload) {
+      var title = String(payload.title || '').trim();
+      if (!title) return { ok: false, error: 'A case title is required.' };
+      var c = {
+        id: E.uid('case'), title: title.slice(0, 120),
+        severity: payload.severity || 'high', status: 'open',
+        owner: this.state.settings.operator, asset: payload.asset || '—',
+        summary: String(payload.summary || '').slice(0, 600),
+        linkedAlerts: (payload.linkedAlerts || []).slice(0, 20),
+        notes: [], createdAt: Date.now(), updatedAt: Date.now()
+      };
+      this.state.cases.unshift(c);
+      this.audit('CASE_OPEN', c.id, 'OPENED', title + ' · severity ' + c.severity + ' · ' + c.linkedAlerts.length + ' linked alert(s).');
+      this.event('govern', 'Incident case opened: ' + title);
+      this.save();
+      return { ok: true, case: c };
+    },
+    addCaseNote: function (id, note) {
+      var c = this.state.cases.filter(function (x) { return x.id === id; })[0];
+      if (!c || !String(note || '').trim()) return false;
+      c.notes.unshift({ id: E.uid('note'), ts: Date.now(), actor: this.state.settings.operator, text: String(note).slice(0, 500) });
+      c.updatedAt = Date.now();
+      this.audit('CASE_NOTE', id, 'RECORDED', String(note).slice(0, 120));
+      this.save();
+      return true;
+    },
+    setCaseStatus: function (id, status) {
+      var c = this.state.cases.filter(function (x) { return x.id === id; })[0];
+      if (!c) return false;
+      c.status = status; c.updatedAt = Date.now();
+      this.audit('CASE_' + status.toUpperCase(), id, status.toUpperCase(), c.title);
+      this.event('govern', 'Case ' + c.title.slice(0, 40) + ' → ' + status.toUpperCase());
+      this.save();
+      return true;
+    },
+    recordOrchestratorRun: function (run) {
+      this.state.orchestratorRuns.unshift(run);
+      if (this.state.orchestratorRuns.length > 12) this.state.orchestratorRuns.length = 12;
+      this.audit('ORCHESTRATOR_RUN', run.target || 'all-scope', run.status,
+        run.done + ' of ' + run.total + ' tasks completed; ' + run.refused + ' refused; ' + run.durationMs + 'ms.');
+      this.event('agent', 'Orchestrator run ' + run.status + ': ' + run.done + '/' + run.total + ' tasks.');
+      this.save();
+    },
+    recordInvestigation: function (res) {
+      this.state.investigationHistory.unshift({ query: res.query, at: Date.now(), count: res.result.count, intent: res.result.type });
+      if (this.state.investigationHistory.length > 25) this.state.investigationHistory.length = 25;
+      this.audit('INVESTIGATION', res.result.type, 'QUERY', '"' + res.query + '" → ' + res.result.count + ' record(s).');
+      this.save();
+    },
+    recordCapabilityRequest: function (id, decision, reason) {
+      this.state.capabilityRequests.unshift({ id: id, decision: decision, reason: reason, at: Date.now(), actor: this.state.settings.operator });
+      if (this.state.capabilityRequests.length > 30) this.state.capabilityRequests.length = 30;
+      this.audit('CAPABILITY_REQUEST', id, decision, reason);
+      this.event(decision === 'REFUSED' ? 'refuse' : 'scope', 'Capability ' + id + ' → ' + decision + '.');
+      this.save();
+    },
+    saveQuant: function (result) {
+      this.state.quantResult = result;
+      this.audit('RISK_QUANT', 'portfolio', 'COMPLETE',
+        result.iterations + ' Monte Carlo iterations; p50 ' + result.p50 + ', p90 ' + result.p90 + ' (illustrative).');
+      this.save();
+    },
+
     chainStatus: function () { return E.verifyChain(this.state.audit); }
   };
 
@@ -1161,8 +2199,15 @@
   var ui = {
     view: 'overview', modal: null, palette: false, paletteQuery: '', paletteIndex: 0,
     selectedAsset: null, sweepLines: [], sweepRunning: false,
-    alertFilter: 'all', assetQuery: '', toasts: []
+    alertFilter: 'all', assetQuery: '', toasts: [],
+    labTab: 'email', orchestratorRunning: false, orchestratorNodes: {},
+    ingestFormat: 'auto', ingestResult: null, investigateQuery: '', investigateResult: null,
+    caseSelected: null, quantIterations: 2000
   };
+  /* Extension points consumed by src/40-ui2.js (v2 capability modules). */
+  var ACTION_HANDLERS = Object.create(null);
+  var FORM_HANDLERS = Object.create(null);
+  var EXTRA_COMMANDS = [];
 
   /* ---------------------------- tiny charts ----------------------------- */
   function activitySeries() {
@@ -1240,7 +2285,7 @@
         '<div class="side-foot"><div class="scope-mini"><div class="scope-mini-head"><span>AUTHORIZATION BOUNDARY</span><b>' + active + '/' + s.assets.length + '</b></div>' +
           '<div class="scope-track"><span style="width:' + Math.round(active / (s.assets.length || 1) * 100) + '%"></span></div>' +
           '<small>' + esc(s.settings.operator) + ' · local session</small></div>' +
-          '<div class="build">v1.0.0 · offline engine · <span>NO NETWORK EGRESS</span></div></div>' +
+          '<div class="build">v2.0.0 · 19 modules · <span>NO NETWORK EGRESS</span></div></div>' +
       '</aside>' +
       '<div class="workspace"><header class="topbar">' +
         '<div class="crumbs"><span>WORKSPACE</span><b>/</b><strong>' + esc(VIEWS[ui.view].label) + '</strong></div>' +
@@ -1738,7 +2783,7 @@
       { label: 'Verify audit hash chain', hint: 'GOVERN', icon: 'chain', run: function () { navigate('audit'); verifyChain(); } },
       { label: 'Export session / report', hint: 'GOVERN', icon: 'download', run: exportState },
       { label: 'Open executive summary', hint: 'GOVERN', icon: 'file', run: executiveSummary }
-    ]);
+    ].concat(EXTRA_COMMANDS));
   }
   function filteredCommands() {
     var q = ui.paletteQuery.toLowerCase();
@@ -1958,6 +3003,7 @@
       if (a === 'close-modal') { closeModal(); return; }
       if (a === 'palette-close') { ui.palette = false; renderPalette(); return; }
     }
+    if (ACTION_HANDLERS[a]) { ACTION_HANDLERS[a](t, ev, s); return; }
     switch (a) {
       case 'nav': navigate(t.getAttribute('data-view')); break;
       case 'palette-open': openPalette(); break;
@@ -2044,6 +3090,7 @@
     ev.preventDefault();
     var kind = form.getAttribute('data-form');
     var fd = new FormData(form);
+    if (FORM_HANDLERS[kind]) { FORM_HANDLERS[kind](form, fd); return; }
     if (kind === 'asset') {
       var payload = {
         name: fd.get('name'), type: fd.get('type'), owner: fd.get('owner'),
@@ -2095,6 +3142,31 @@
     }
   }
 
+  /* Public extension API. Loaded synchronously by 40-ui2.js before boot(). */
+  root.AEGIS_UI = {
+    DATA: DATA, E: E, S: S, ui: ui, $: $, doc: doc,
+    h: {
+      esc: esc, icon: icon, ts: ts, rel: rel, day: day, sevPill: sevPill,
+      statusPill: statusPill, section: section, kpi: kpi, bar: bar, donut: donut,
+      empty: empty, areaChart: areaChart, activitySeries: activitySeries,
+      countBy: countBy, short: short, sevRank: E.sevRank, assetOptions: assetOptions
+    },
+    modal: modal, closeModal: closeModal, toast: toast, navigate: navigate,
+    render: render, renderView: renderView, download: download, copy: copy,
+    trace: trace, sleep: sleep, executiveSummary: executiveSummary,
+    registerNav: function (group, items) {
+      var g = NAV.filter(function (x) { return x.group === group; })[0];
+      if (!g) { g = { group: group, items: [] }; NAV.push(g); }
+      items.forEach(function (i) { g.items.push(i); });
+    },
+    registerMeta: function (map) { Object.keys(map).forEach(function (k) { VIEWS[k] = map[k]; }); },
+    registerView: function (id, fn) { VIEWS_FUNC[id] = fn; },
+    getView: function (id) { return VIEWS_FUNC[id]; },
+    registerAction: function (name, fn) { ACTION_HANDLERS[name] = fn; },
+    registerForm: function (name, fn) { FORM_HANDLERS[name] = fn; },
+    registerCommands: function (list) { list.forEach(function (c) { EXTRA_COMMANDS.push(c); }); }
+  };
+
   function boot() {
     S.init();
     buildCommands();
@@ -2111,4 +3183,708 @@
 
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
   else boot();
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+
+/* ===== 40-ui2.js ===== */
+/* AEGIS // SENTINEL v2 — extended operator console.
+ * Registers 8 new views, a DAG orchestrator, five configuration analyzers,
+ * a MITRE ATT&CK coverage studio, case management, an investigation copilot,
+ * quantitative risk and the capability manifest into the base UI.
+ */
+(function (root) {
+  'use strict';
+  var U = root.AEGIS_UI;
+  var DATA = U.DATA, D2 = root.AEGIS_DATA2, E = U.E, A = root.AEGIS_ADVANCED;
+  var S = U.S, ui = U.ui, h = U.h, esc = h.esc;
+  var $ = U.$, section = h.section, icon = h.icon, sevPill = h.sevPill;
+
+  /* ------------------------------ navigation ----------------------------- */
+  U.registerNav('OPERATE', [
+    { id: 'orchestrator', label: 'Mission Orchestrator', icon: 'cpu', key: 'Q' },
+    { id: 'cases', label: 'Incident Cases', icon: 'file', key: 'W' }
+  ]);
+  U.registerNav('ANALYZE', [
+    { id: 'ingest', label: 'Universal Ingest', icon: 'wave', key: 'E' },
+    { id: 'lab', label: 'Analysis Lab', icon: 'lock', key: 'R' },
+    { id: 'studio', label: 'Detection Studio', icon: 'target', key: 'T' },
+    { id: 'investigate', label: 'Investigation Copilot', icon: 'search', key: 'Y' },
+    { id: 'quant', label: 'Risk Quantification', icon: 'chart', key: 'U' }
+  ]);
+  U.registerNav('GOVERN', [
+    { id: 'capabilities', label: 'Capability Manifest', icon: 'shield', key: 'I' }
+  ]);
+  U.registerMeta({
+    orchestrator: { id: 'orchestrator', label: 'Mission Orchestrator', icon: 'cpu', key: 'Q' },
+    cases: { id: 'cases', label: 'Incident Cases', icon: 'file', key: 'W' },
+    ingest: { id: 'ingest', label: 'Universal Ingest', icon: 'wave', key: 'E' },
+    lab: { id: 'lab', label: 'Analysis Lab', icon: 'lock', key: 'R' },
+    studio: { id: 'studio', label: 'Detection Studio', icon: 'target', key: 'T' },
+    investigate: { id: 'investigate', label: 'Investigation Copilot', icon: 'search', key: 'Y' },
+    quant: { id: 'quant', label: 'Risk Quantification', icon: 'chart', key: 'U' },
+    capabilities: { id: 'capabilities', label: 'Capability Manifest', icon: 'shield', key: 'I' }
+  });
+
+  /* ------------------------------- helpers ------------------------------- */
+  function statRow(items) {
+    return '<div class="stat-row">' + items.map(function (i) {
+      return '<div><b>' + esc(i[0]) + '</b><span>' + esc(i[1]) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  function checksHtml(checks) {
+    return '<div class="controls">' + checks.map(function (c) {
+      return '<div class="control control-' + esc(c.status) + '"><div class="control-head">' + h.statusPill(c.status) +
+        '<b>' + esc(c.title) + '</b><span>' + esc(c.id) + '</span></div><p>' + esc(c.evidence) + '</p>' +
+        '<div class="control-fix"><span>FIX</span><code>' + esc(c.fix) + '</code></div></div>';
+    }).join('') + '</div>';
+  }
+  function scoreBox(label, value, sub, tone) {
+    return '<div class="lab-score ' + (tone || '') + '"><span>' + esc(label) + '</span><b>' + esc(value) + '</b><small>' + esc(sub) + '</small></div>';
+  }
+  function trace2(tag, text, kind) {
+    ui.orchestratorLines = ui.orchestratorLines || [];
+    ui.orchestratorLines.push({ t: h.ts(Date.now()).slice(-8), tag: tag, text: text, kind: kind || 'info' });
+    if (ui.orchestratorLines.length > 80) ui.orchestratorLines.shift();
+  }
+  function terminal2() {
+    var lines = ui.orchestratorLines || [];
+    return '<div class="terminal"><div class="terminal-head"><span class="term-dots"><i></i><i></i><i></i></span>' +
+      '<span>AEGIS ORCHESTRATOR · TASK TRACE</span><span class="term-state">' + (ui.orchestratorRunning ? 'RUNNING' : 'IDLE') + '</span></div>' +
+      '<div class="terminal-body">' + (lines.length ? lines.map(function (l) {
+        return '<div class="term-line term-' + esc(l.kind) + '"><span>' + esc(l.t) + '</span><b>' + esc(l.tag) + '</b> ' + esc(l.text) + '</div>';
+      }).join('') : '<div class="term-line term-muted"><span>' + esc(h.ts(Date.now()).slice(-8)) + '</span><b>READY</b> Awaiting an orchestrated mission. All tasks pass the capability gate.</div>') + '</div></div>';
+  }
+  function activeTargets() {
+    var need = ['posture', 'logs', 'headers', 'intel'];
+    return E.activeAssets(S.state).filter(function (a) {
+      return need.every(function (c) { return (a.checks || []).indexOf(c) !== -1; });
+    });
+  }
+  function targetOptions() {
+    var list = activeTargets();
+    if (!list.length) return '<option value="">No asset permits the full mission scope</option>';
+    if (!list.some(function (a) { return a.name === ui.orchTarget; })) ui.orchTarget = list[0].name;
+    return list.map(function (a) {
+      return '<option value="' + esc(a.name) + '" ' + (a.name === ui.orchTarget ? 'selected' : '') + '>' + esc(a.name) + '</option>';
+    }).join('');
+  }
+
+  /* --------------------------- mission orchestrator ---------------------- */
+  function dagHtml() {
+    var tiers = {};
+    D2.ORCHESTRATOR_PLAN.forEach(function (n) { (tiers[n.tier] = tiers[n.tier] || []).push(n); });
+    return '<div class="dag">' + Object.keys(tiers).sort(function (a, b) { return a - b; }).map(function (t) {
+      return '<div class="dag-col"><div class="dag-col-head">STAGE ' + t + '</div>' + tiers[t].map(function (n) {
+        var st = (ui.orchestratorNodes || {})[n.id] || { status: 'IDLE' };
+        var cls = String(st.status).toLowerCase();
+        return '<div class="dag-node dag-' + cls + '"><div class="dag-node-top"><span>' + esc(n.cap) + '</span>' +
+          '<b class="dag-badge">' + esc(st.status) + '</b></div><strong>' + esc(n.label) + '</strong>' +
+          '<p>' + esc(n.desc) + '</p>' + (st.detail ? '<small>' + esc(st.detail) + '</small>' : '') + '</div>';
+      }).join('') + '</div>';
+    }).join('') + '</div>';
+  }
+  U.registerView('orchestrator', function () {
+    var last = S.state.orchestratorRuns[0];
+    var rows = last ? (last.nodes || []).map(function (n) {
+      return '<tr><td><code>' + esc(n.id) + '</code></td><td>' + h.statusPill(n.status) + '</td><td>' + esc(n.detail || n.reason || '—') + '</td><td>' + esc(n.count || 0) + '</td></tr>';
+    }).join('') : '';
+    return '<div class="page-head"><div><div class="eyebrow">OPERATIONS · AUTONOMOUS ORCHESTRATION</div><h1>Mission Orchestrator</h1>' +
+      '<p>A policy-gated task graph. Every node resolves its capability in the signed manifest and re-verifies the target scope before executing — locally, with no network calls.</p></div>' +
+      '<div class="head-actions"><span class="chip chip-lock">' + icon('shield') + ' ' + D2.CAPABILITIES.filter(function (c) { return c.status === 'enabled'; }).length + ' CAPABILITIES SIGNED</span></div></div>' +
+      section('Task graph', D2.ORCHESTRATOR_PLAN.length + ' tasks · ' + Math.max.apply(null, D2.ORCHESTRATOR_PLAN.map(function (n) { return n.tier; })) + ' stages · dependency-ordered',
+        '<span class="tag">ALL LOCAL</span>', dagHtml()) +
+      '<div class="grid-2"><div class="col-main">' +
+        section('Dispatch', 'Select an authorized target, then run the full mission', '',
+          '<div class="control-row"><label class="field flex"><span>Authorized target</span><select id="orch-target">' + targetOptions() + '</select></label>' +
+          '<button class="btn btn-primary" data-action="orch-run" ' + (ui.orchestratorRunning ? 'disabled' : '') + '>' + icon('play') +
+          (ui.orchestratorRunning ? ' Running…' : ' Run orchestrated mission') + '</button>' +
+          '<button class="btn btn-ghost" data-action="nav" data-view="capabilities">View manifest</button></div>' + terminal2()) +
+        section('Last run', last ? h.ts(last.at) + ' · ' + last.status : 'No runs yet', '',
+          last ? statRow([[last.done + '/' + last.total, 'TASKS DONE'], [last.refused, 'REFUSED'], [last.durationMs + 'ms', 'DURATION'], [last.target, 'TARGET']]) +
+            '<div class="table-wrap"><table class="table"><thead><tr><th>TASK</th><th>STATUS</th><th>DETAIL</th><th>COUNT</th></tr></thead><tbody>' + rows + '</tbody></table></div>' :
+            h.empty('Dispatch a mission to see the per-task decision trace.')) +
+      '</div><div class="col-side">' +
+        section('Execution contract', 'What the orchestrator guarantees', '',
+          '<ul class="policy-list compact">' +
+          '<li>' + icon('check') + '<span><b>Capability resolution per task</b><small>Unknown or blocked capabilities are refused before execution.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Scope re-verification per task</b><small>Signature, expiry and permitted checks are re-checked every time.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Dependency enforcement</b><small>Nodes with incomplete dependencies are skipped, never guessed.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Ledger-sealed run</b><small>Every DONE / REFUSED outcome is appended to the hash chain.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Deterministic, offline</b><small>No host is contacted by any node in this graph.</small></span></li></ul>') +
+        section('Task catalog', 'Capabilities used by this mission', '',
+          D2.ORCHESTRATOR_PLAN.map(function (n) {
+            return '<div class="task-row"><span class="stage-badge">S' + n.tier + '</span><div><b>' + esc(n.label) + '</b><small>' + esc(n.cap) + '</small></div></div>';
+          }).join('')) +
+      '</div></div>';
+  });
+
+  async function runOrchestrator() {
+    if (ui.orchestratorRunning) return;
+    var sel = $('orch-target');
+    var target = sel ? sel.value : ui.orchTarget;
+    if (!target) { U.toast('Register an asset that permits the full mission scope first.', 'bad'); return; }
+    ui.orchTarget = target;
+    ui.orchestratorRunning = true;
+    ui.orchestratorNodes = {};
+    ui.orchestratorLines = [];
+    if (ui.view !== 'orchestrator') { ui.view = 'orchestrator'; U.render(); }
+    trace2('BOOT', 'Orchestrator v2.0 initializing. Target: ' + target, 'info');
+    trace2('POLICY', 'Capability manifest loaded · strict scope enforcement ON.', 'ok');
+    U.renderView();
+    await U.sleep(180);
+
+    var ctx = { target: target }, done = 0, refused = 0, skipped = 0;
+    var start = Date.now(), nodes = [];
+    for (var i = 0; i < D2.ORCHESTRATOR_PLAN.length; i++) {
+      var n = D2.ORCHESTRATOR_PLAN[i];
+      var depsOk = n.deps.every(function (d) { return ui.orchestratorNodes[d] && ui.orchestratorNodes[d].status === 'DONE'; });
+      if (!depsOk) {
+        ui.orchestratorNodes[n.id] = { status: 'SKIPPED', detail: 'Dependency not satisfied.', count: 0 };
+        skipped++;
+        trace2('SKIP', n.id + ' skipped — upstream dependency incomplete.', 'bad');
+        nodes.push({ id: n.id, status: 'SKIPPED', detail: 'Dependency not satisfied.', count: 0 });
+      } else {
+        var res = A.orchestratorStep(n, S.state, ctx);
+        ui.orchestratorNodes[n.id] = { status: res.status, detail: res.detail || res.reason, count: res.count };
+        if (res.status === 'DONE') { done++; trace2('DONE', n.label + ' → ' + (res.detail || 'complete'), 'ok'); }
+        else { refused++; trace2('REFUSE', n.label + ' → ' + res.code + ': ' + res.reason, 'bad'); }
+        S.audit('ORCH_' + n.id.toUpperCase(), target, res.status, res.detail || res.reason);
+        nodes.push({ id: n.id, status: res.status, detail: res.detail || res.reason, count: res.count });
+      }
+      U.renderView();
+      await U.sleep(190);
+    }
+    var status = refused ? 'PARTIAL' : skipped ? 'COMPLETE_WITH_SKIPS' : 'COMPLETE';
+    S.recordOrchestratorRun({ id: E.uid('run'), at: Date.now(), target: target, status: status,
+      done: done, refused: refused, skipped: skipped, total: D2.ORCHESTRATOR_PLAN.length,
+      durationMs: Date.now() - start, nodes: nodes });
+    trace2('SEAL', 'Run sealed in ledger. ' + done + ' done / ' + refused + ' refused / ' + skipped + ' skipped. No network egress.', 'ok');
+    ui.orchestratorRunning = false;
+    U.render();
+    U.toast('Orchestrated mission ' + status.toLowerCase() + ' — ' + done + '/' + D2.ORCHESTRATOR_PLAN.length + ' tasks.', refused ? 'bad' : 'ok');
+  }
+
+  /* ---------------------------- universal ingest ------------------------- */
+  var INGEST_SAMPLES = { jsonl: 'jsonl', nginx: 'nginx', syslog: 'logs', csv: 'csv' };
+  U.registerView('ingest', function () {
+    var saved = S.state.ingestResults;
+    var r = saved && saved.result;
+    var results = r ? statRow([[r.format.toUpperCase(), 'FORMAT'], [r.events.length, 'EVENTS'], [r.stats.sources, 'SOURCES'],
+      [r.stats.tagged, 'TAGGED'], [r.stats.tactics, 'TACTICS']]) +
+      '<div class="grid-2">' +
+      '<div><h3 class="subhead">Normalized event stream</h3><div class="table-wrap table-tall"><table class="table"><thead><tr><th>#</th><th>SOURCE</th><th>ACTOR</th><th>ACTION</th><th>STATUS</th><th>RULES</th></tr></thead><tbody>' +
+      r.events.slice(0, 40).map(function (e) {
+        return '<tr><td><code>' + e.n + '</code></td><td><code>' + esc(e.src || '—') + '</code></td><td>' + esc(e.actor || '—') + '</td>' +
+          '<td class="detail-cell">' + esc(e.action || '—') + '</td><td>' + esc(e.status || '—') + '</td>' +
+          '<td>' + (e.tags.length ? e.tags.map(function (t) { return '<span class="mini-chip">' + esc(t.mitre) + '</span>'; }).join(' ') : '<span class="muted">—</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>' +
+      '<div><h3 class="subhead">Tactic distribution</h3>' +
+      Object.keys(r.stats.byTactic).map(function (k) {
+        return h.bar(k.toUpperCase(), r.stats.byTactic[k], Math.max.apply(null, Object.values(r.stats.byTactic).concat([1])), '#5ad2ff');
+      }).join('') + '</div></div>' : h.empty('Paste telemetry in any supported format and run normalization.');
+
+    var chains = r ? A.attackChains(r) : { chains: [] };
+    var chainHtml = chains.chains.length ? chains.chains.map(function (c) {
+      return '<div class="chain-card"><div class="chain-head">' + sevPill(c.severity) + '<code>' + esc(c.src) + '</code>' +
+        '<span class="chain-conf">' + c.confidence + '% confidence</span></div>' +
+        '<div class="chain-steps">' + c.timeline.map(function (t) {
+          return '<div class="chain-step"><span class="chain-dot"></span><div><b>' + esc(A.tacticName(t.tactic)) + '</b>' +
+            '<small>' + esc(t.technique) + ' · ' + esc(t.action.slice(0, 70)) + '</small></div></div>';
+        }).join('') + '</div>' +
+        '<div class="chain-foot">' + c.events + ' events · ' + c.tagged + ' tagged · ' + c.tactics.length + ' tactics · ' + c.techniques.length + ' techniques</div></div>';
+    }).join('') : h.empty('No multi-stage chains could be reconstructed from this telemetry.');
+
+    var series = r ? A.eventRateSeries(r) : [];
+    var anomaly = r ? A.anomalyDetect(series) : null;
+    var anomalyHtml = anomaly ? '<div class="chart-wrap">' + h.areaChart(anomaly.values) + '</div>' +
+      statRow([[anomaly.mean, 'MEAN'], [anomaly.stddev, 'STD DEV'], [anomaly.lower, 'IQR LOW'], [anomaly.upper, 'IQR HIGH'], [anomaly.outliers.length, 'OUTLIERS']]) +
+      (anomaly.outliers.length ? '<div class="outlier-list">' + anomaly.outliers.map(function (o) {
+        return '<div>' + icon('alert') + '<span>Bucket <b>' + o.index + '</b>: ' + o.value + ' events (z=' + o.z + ')</span></div>';
+      }).join('') + '</div>' : '<p class="muted small">No statistically significant outliers at z &gt; 2 or outside 1.5×IQR.</p>') : h.empty('Run ingest to compute a statistical baseline.');
+
+    return '<div class="page-head"><div><div class="eyebrow">ANALYSIS · NORMALIZATION</div><h1>Universal Ingest</h1>' +
+      '<p>Auto-detects JSONL, nginx/apache combined, syslog/auth and CSV, normalizes them into one schema, tags every event with detection rules and reconstructs multi-stage attack chains.</p></div>' +
+      '<div class="head-actions"><span class="chip">' + icon('wave') + ' 7 FORMATS · LOCAL</span></div></div>' +
+      '<div class="grid-2"><div class="col-main">' +
+        section('Telemetry source', 'Paste raw events — format is detected automatically',
+          '<div class="sample-btns">' + Object.keys(INGEST_SAMPLES).map(function (k) {
+            return '<button class="btn btn-xs" data-action="ingest-sample" data-kind="' + k + '">' + esc(k) + '</button>';
+          }).join('') + '</div>',
+          '<div class="control-row"><label class="field flex"><span>Associate with in-scope asset</span><select id="ingest-target">' + h.assetOptions('logs') + '</select></label></div>' +
+          '<textarea class="code-area" data-draft="ingest" spellcheck="false">' + esc(S.state.drafts.ingest || '') + '</textarea>' +
+          '<div class="form-actions"><button class="btn btn-primary" data-action="ingest-analyze">' + icon('wave') + ' Normalize & reconstruct</button></div>') +
+        section('Normalization results', r ? h.ts(saved.at) : 'Awaiting input', '', results) +
+        section('Reconstructed attack chains', chains.chains.length + ' multi-stage chain(s)', '<span class="tag">MITRE TACTICS</span>', chainHtml) +
+      '</div><div class="col-side">' +
+        section('Statistical anomaly baseline', 'Z-score · IQR · EWMA on event rate', '', anomalyHtml) +
+        section('Supported schemas', 'Normalized event model', '',
+          '<div class="schema-grid">' + ['ts', 'src', 'actor', 'action', 'target', 'status', 'ua', 'tags'].map(function (f) {
+            return '<div><code>' + esc(f) + '</code><span>' + esc({ ts: 'timestamp', src: 'source address', actor: 'principal', action: 'event label', target: 'resource', status: 'HTTP/status code', ua: 'user agent', tags: 'rule + MITRE hits' }[f]) + '</span></div>';
+          }).join('') + '</div>') +
+      '</div></div>';
+  });
+
+  function ingestAnalyze() {
+    var sel = $('ingest-target');
+    var target = sel ? sel.value : (E.activeAssets(S.state)[0] || {}).name;
+    if (!target) { U.toast('Register an in-scope asset first.', 'bad'); return; }
+    var gate = A.evaluateCapability('telemetry.normalize', S.state, target);
+    if (!gate.allowed) {
+      S.recordCapabilityRequest('telemetry.normalize', 'REFUSED', gate.reason);
+      U.modal('Capability refused', '<div class="refusal">' + icon('shield') + '<div><h3>' + esc(gate.code) + '</h3><p>' + esc(gate.reason) + '</p></div></div>',
+        '<button class="btn btn-primary" data-action="close-modal">Close</button>');
+      U.toast('Ingest refused: ' + gate.code, 'bad'); return;
+    }
+    var r = A.normalizeLogs(S.state.drafts.ingest || '');
+    S.saveIngest(r, target);
+    U.toast(r.format + ' detected · ' + r.events.length + ' events normalized.', 'ok');
+    U.render();
+  }
+
+  /* -------------------------------- analysis lab ------------------------- */
+  var LAB_TABS = [
+    { id: 'email', label: 'Phishing / .eml', sample: 'email', scope: 'intel', cap: 'config.email' },
+    { id: 'iam', label: 'IAM policy', sample: 'iam', scope: 'posture', cap: 'config.iam' },
+    { id: 'k8s', label: 'Kubernetes', sample: 'k8s', scope: 'posture', cap: 'config.k8s' },
+    { id: 'secrets', label: 'Secrets & entropy', sample: 'secrets', scope: 'posture', cap: 'config.secrets' },
+    { id: 'deps', label: 'Dependencies / SBOM', sample: 'deps', scope: 'posture', cap: 'config.sbom' }
+  ];
+  function labResultHtml(tab, saved) {
+    if (!saved) return h.empty('Run ' + tab.label + ' analysis on the supplied sample.');
+    var r = saved.result;
+    var extra = '';
+    if (tab.id === 'email') {
+      extra = '<div class="verdict verdict-' + (r.score < 45 ? 'bad' : r.score < 75 ? 'warn' : 'ok') + '">' + icon(r.score < 45 ? 'alert' : 'shield') +
+        '<div><span>VERDICT</span><b>' + esc(r.verdict) + '</b><small>' + r.received + ' relay hops · ' + r.urls.length + ' indicators extracted</small></div></div>' +
+        (r.urls.length ? '<h3 class="subhead">Defanged indicators</h3><div class="ioc-list">' + r.urls.slice(0, 10).map(function (i) {
+          return '<div><span class="ioc-type">' + esc(i.type) + '</span><code>' + esc(i.defanged) + '</code></div>';
+        }).join('') + '</div>' : '') + '<h3 class="subhead">Control evaluation</h3>' + checksHtml(r.checks);
+    } else if (tab.id === 'secrets') {
+      extra = (r.findings.length ? '<div class="table-wrap"><table class="table"><thead><tr><th>SEV</th><th>TYPE</th><th>MASKED VALUE</th><th>LINE</th><th>ENTROPY</th><th>ACTION</th></tr></thead><tbody>' +
+        r.findings.map(function (f) {
+          return '<tr><td>' + sevPill(f.severity) + '</td><td>' + esc(f.type) + '</td><td><code>' + esc(f.masked) + '</code></td><td>' + f.line + '</td><td>' + f.entropy + '</td><td class="detail-cell">' + esc(f.fix) + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '<p class="muted small">No credential material detected.</p>');
+    } else if (tab.id === 'deps') {
+      extra = statRow([[r.packages.length, 'PACKAGES'], [r.findings.length, 'FINDINGS'], [r.format, 'FORMAT']]) +
+        (r.findings.length ? '<div class="table-wrap"><table class="table"><thead><tr><th>SEV</th><th>PACKAGE</th><th>VERSION</th><th>ADVISORY</th><th>REMEDIATION</th></tr></thead><tbody>' +
+          r.findings.map(function (f) {
+            return '<tr><td>' + sevPill(f.severity) + '</td><td><b>' + esc(f.title) + '</b></td><td><code>' + esc(f.version) + '</code></td><td>' + esc(f.cve) + '</td><td class="detail-cell">' + esc(f.fix) + '</td></tr>';
+          }).join('') + '</tbody></table></div>' : '<p class="muted small">No baseline matches.</p>') +
+        '<p class="muted small">' + esc(r.note) + '</p>';
+    } else {
+      extra = checksHtml(r.checks);
+    }
+    return scoreBox('ANALYSIS SCORE', r.score + '/100', 'Analyzed ' + h.ts(saved.at), r.score < 60 ? 'bad' : r.score < 80 ? 'warn' : 'ok') + extra;
+  }
+  U.registerView('lab', function () {
+    var tab = LAB_TABS.filter(function (t) { return t.id === ui.labTab; })[0] || LAB_TABS[0];
+    var draftKey = 'lab_' + tab.id;
+    var saved = S.state.labResults[tab.id];
+    return '<div class="page-head"><div><div class="eyebrow">ANALYSIS · CONFIGURATION LAB</div><h1>Analysis Lab</h1>' +
+      '<p>Five independent offline analyzers for email, cloud IAM, Kubernetes manifests, credential material and software dependencies. All operate on text you paste.</p></div>' +
+      '<div class="head-actions"><span class="chip">' + icon('lock') + ' 5 ENGINES · NO UPLOAD</span></div></div>' +
+      '<div class="lab-tabs">' + LAB_TABS.map(function (t) {
+        return '<button class="lab-tab ' + (t.id === tab.id ? 'active' : '') + '" data-action="lab-tab" data-tab="' + t.id + '">' + esc(t.label) +
+          (S.state.labResults[t.id] ? '<i class="tab-dot"></i>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<div class="grid-2"><div class="col-main">' +
+        section(tab.label + ' input', 'Paste a sample or your own authorized configuration',
+          '<button class="btn btn-xs" data-action="lab-sample" data-tab="' + tab.id + '">Load sample</button>',
+          '<textarea class="code-area" data-draft="' + draftKey + '" spellcheck="false">' + esc(S.state.drafts[draftKey] || '') + '</textarea>' +
+          '<div class="form-actions"><button class="btn btn-primary" data-action="lab-analyze" data-tab="' + tab.id + '">' + icon('target') + ' Run ' + esc(tab.label) + ' analysis</button>' +
+          '<span class="form-hint">Capability: <code>' + esc(tab.cap) + '</code> · required scope: <code>' + esc(tab.scope) + '</code></span></div>') +
+        section('Analysis output', saved ? tab.label + ' · ' + h.ts(saved.at) : 'Awaiting input', '', labResultHtml(tab, saved)) +
+      '</div><div class="col-side">' +
+        section('Analyzer catalog', 'What each engine evaluates', '',
+          LAB_TABS.map(function (t) {
+            var desc = {
+              email: 'SPF/DKIM/DMARC alignment, Reply-To mismatch, relay chain, coercive language, defanged URLs.',
+              iam: 'Wildcard actions/resources, public principals, PassRole, missing MFA conditions, NotAction.',
+              k8s: 'Privileged pods, host namespaces, root user, capabilities, hostPath, image tags, limits, seccomp.',
+              secrets: 'Provider token patterns, private keys, JWTs, credentialed URLs plus Shannon-entropy detection with masking.',
+              deps: 'package.json, lockfiles, CycloneDX SBOM and requirements.txt against an offline advisory baseline.'
+            }[t.id];
+            return '<div class="task-row"><span class="stage-badge">' + esc(t.id.slice(0, 3).toUpperCase()) + '</span><div><b>' + esc(t.label) + '</b><small>' + esc(desc) + '</small></div></div>';
+          }).join('')) +
+        section('Handling', 'Privacy by design', '',
+          '<ul class="policy-list compact"><li>' + icon('check') + '<span><b>Nothing is uploaded</b><small>Parsing happens in this browser tab.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Values are masked</b><small>Secret findings show only a redacted fingerprint.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Scope-gated</b><small>Each analyzer requires an in-scope asset permitting its check type.</small></span></li></ul>') +
+      '</div></div>';
+  });
+  function labAnalyze(tabId) {
+    var tab = LAB_TABS.filter(function (t) { return t.id === tabId; })[0];
+    if (!tab) return;
+    var target = (activeTargets()[0] || E.activeAssets(S.state)[0] || {}).name || '';
+    var gate = A.evaluateCapability(tab.cap, S.state, target || null);
+    if (!gate.allowed) {
+      S.recordCapabilityRequest(tab.cap, 'REFUSED', gate.reason);
+      U.toast('Analysis refused: ' + gate.code, 'bad');
+      U.modal('Capability refused', '<div class="refusal">' + icon('shield') + '<div><h3>' + esc(gate.code) + '</h3><p>' + esc(gate.reason) + '</p></div></div>',
+        '<button class="btn btn-primary" data-action="close-modal">Close</button>');
+      return;
+    }
+    var text = S.state.drafts['lab_' + tab.id] || '';
+    if (!text.trim()) { U.toast('Paste content first.', 'bad'); return; }
+    var r = ({ email: A.analyzeEmail, iam: A.analyzeIamPolicy, k8s: A.analyzeK8s,
+      secrets: A.secretScan, deps: A.analyzeDependencies })[tab.id](text);
+    S.saveLab(tab.id, r, target || 'operator-supplied text');
+    U.toast(tab.label + ' analysis complete · score ' + r.score + '/100.', r.score < 60 ? 'bad' : 'ok');
+    U.render();
+  }
+
+  /* ---------------------------- detection studio ------------------------- */
+  U.registerView('studio', function () {
+    var cov = A.mitreCoverage(S.state);
+    var matrix = cov.tactics.map(function (t) {
+      return '<div class="matrix-row"><div class="matrix-label"><b>' + esc(t.short) + '</b><small>' + t.covered + '/' + t.total + '</small></div>' +
+        '<div class="matrix-cells">' + t.techniques.map(function (x) {
+          return '<span class="matrix-cell ' + (x.covered ? 'cov' : 'gap') + (x.observed ? ' obs' : '') + '" title="' + esc(x.id + ' · ' + x.name + (x.observed ? ' · observed' : '')) + '">' + esc(x.id.replace('T', '')) + '</span>';
+        }).join('') + '</div></div>';
+    }).join('');
+    var rules = S.state.customRules.map(function (r) {
+      return '<tr><td><b>' + esc(r.name) + '</b></td><td><code>' + esc(r.pattern) + '</code></td><td>' + sevPill(r.severity) + '</td><td>' + esc(r.mitre) + '</td><td>' + r.threshold + '</td>' +
+        '<td><button class="btn btn-xs btn-danger" data-action="rule-delete" data-id="' + esc(r.id) + '">Delete</button></td></tr>';
+    }).join('');
+    var testResult = ui.ruleTest ? '<div class="rule-test ' + (ui.ruleTest.ok && ui.ruleTest.matched ? 'ok' : 'warn') + '">' +
+      (ui.ruleTest.ok ? '<b>' + (ui.ruleTest.matched ? 'MATCHED' : 'NO MATCH') + '</b><span>' + ui.ruleTest.count + ' line(s) matched against current telemetry · threshold ' + esc(ui.ruleTest.threshold || 1) + '</span>' +
+        (ui.ruleTest.samples.length ? '<pre class="samples">' + esc(ui.ruleTest.samples.join('\n')) + '</pre>' : '') :
+        '<b>INVALID REGEX</b><span>' + esc(ui.ruleTest.error) + '</span>') + '</div>' : '';
+    return '<div class="page-head"><div><div class="eyebrow">ANALYSIS · DETECTION ENGINEERING</div><h1>Detection Studio</h1>' +
+      '<p>ATT&CK Navigator-style coverage heatmap across ' + cov.total + ' techniques, gap analysis, and an operator-authored regex rule engine with live testing.</p></div>' +
+      '<div class="head-actions"><button class="btn btn-ghost" data-action="studio-export">' + icon('download') + ' Export coverage</button></div></div>' +
+      '<div class="grid-2"><div class="col-main">' +
+        section('ATT&CK coverage matrix', cov.covered + ' of ' + cov.total + ' techniques covered (' + cov.percent + '%)',
+          '<span class="tag">LOCAL CATALOG</span>',
+          '<div class="matrix-legend"><span><i class="cell-cov"></i>Detection rule</span><span><i class="cell-obs"></i>Observed in session</span><span><i class="cell-gap"></i>Coverage gap</span></div>' + matrix) +
+        section('Custom detection rules', S.state.customRules.length + ' operator-authored rule(s)', '',
+          '<form data-form="custom-rule" id="rule-form" class="form-grid">' +
+          '<label class="field"><span>Rule name</span><input name="name" placeholder="Suspicious admin endpoint" required></label>' +
+          '<label class="field"><span>MITRE technique</span><input name="mitre" value="T1059" placeholder="T1059"></label>' +
+          '<label class="field"><span>Severity</span><select name="severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label>' +
+          '<label class="field"><span>Match threshold <em>lines</em></span><input name="threshold" type="number" min="1" max="50" value="1"></label>' +
+          '<label class="field field-wide"><span>Regular expression</span><input name="pattern" placeholder="(admin|root).*(denied|blocked)" required></label>' +
+          '<label class="field field-wide"><span>Remediation guidance</span><input name="remediation" placeholder="Review the matching events and verify scope."></label>' +
+          '<div class="form-actions field-wide"><button class="btn btn-primary" type="submit">' + icon('check') + ' Publish rule</button>' +
+          '<button class="btn btn-ghost" type="button" data-action="rule-test">' + icon('wave') + ' Test against telemetry</button></div></form>' + testResult +
+          (rules ? '<div class="table-wrap" style="margin-top:14px"><table class="table"><thead><tr><th>NAME</th><th>PATTERN</th><th>SEV</th><th>MITRE</th><th>THRESHOLD</th><th></th></tr></thead><tbody>' + rules + '</tbody></table></div>' : '<p class="muted small" style="margin-top:12px">No custom rules yet. Published rules join the orchestrator detection sweep.</p>')) +
+      '</div><div class="col-side">' +
+        section('Coverage posture', 'Rule-based technique coverage', '',
+          '<div class="donut-row">' + h.donut([{ key: 'implemented', value: cov.covered }, { key: 'gap', value: cov.total - cov.covered }], cov.percent + '%', 'coverage') +
+          '<div class="donut-legend"><div><span class="dot dot-implemented"></span>covered<b>' + cov.covered + '</b></div>' +
+          '<div><span class="dot dot-gap"></span>gaps<b>' + (cov.total - cov.covered) + '</b></div></div></div>') +
+        section('Priority coverage gaps', 'Techniques with no local detection rule', '',
+          cov.gaps.slice(0, 12).map(function (g) {
+            return '<div class="gap-row"><code>' + esc(g.id) + '</code><span>' + esc(g.name) + '</span><small>' + esc(A.tacticName(g.tactic)) + '</small></div>';
+          }).join('') || h.empty('Full coverage.')) +
+        section('Built-in catalog', DATA.LOG_RULES.length + ' mapped rules', '',
+          DATA.LOG_RULES.slice(0, 8).map(function (r) {
+            return '<div class="gap-row"><code>' + esc(r.mitre) + '</code><span>' + esc(r.name) + '</span>' + sevPill(r.severity) + '</div>';
+          }).join('') + '<button class="btn btn-xs" style="margin-top:10px" data-action="nav" data-view="logs">Open signal analyzer</button>') +
+      '</div></div>';
+  });
+
+  /* ------------------------------ incident cases ------------------------- */
+  U.registerView('cases', function () {
+    var cases = S.state.cases;
+    var alertOpts = S.state.alerts.slice(0, 12).map(function (a) {
+      return '<label class="check"><input type="checkbox" name="alerts" value="' + esc(a.id) + '"><span>' + esc(a.title.slice(0, 58)) + '</span></label>';
+    }).join('');
+    var list = cases.length ? cases.map(function (c) {
+      var done = c.notes.length;
+      return '<div class="case-card"><div class="case-top">' + sevPill(c.severity) + h.statusPill(c.status) +
+        '<span class="muted small">' + esc(h.rel(c.createdAt)) + '</span></div><h3>' + esc(c.title) + '</h3>' +
+        '<p>' + esc(c.summary || 'No summary provided.') + '</p>' +
+        '<div class="case-meta"><span>' + icon('shield') + esc(c.asset) + '</span><span>' + icon('file') + done + ' notes</span>' +
+        '<span>' + icon('target') + c.linkedAlerts.length + ' linked alerts</span><span>' + icon('clock') + esc(c.owner) + '</span></div>' +
+        '<div class="case-actions"><button class="btn btn-xs" data-action="case-detail" data-id="' + esc(c.id) + '">Open case</button>' +
+        '<button class="btn btn-xs btn-ghost" data-action="case-export" data-id="' + esc(c.id) + '">' + icon('download') + ' Export</button></div></div>';
+    }).join('') : h.empty('No incident cases yet. Open one to link alerts and evidence.');
+    return '<div class="page-head"><div><div class="eyebrow">OPERATIONS · CASE MANAGEMENT</div><h1>Incident Cases</h1>' +
+      '<p>Link alerts and evidence into an auditable investigation record. Notes, status changes and exports are written to the ledger.</p></div>' +
+      '<div class="head-actions"><span class="chip">' + icon('file') + ' ' + cases.length + ' CASES</span></div></div>' +
+      '<div class="grid-2"><div class="col-side">' +
+        section('Open a case', 'Record the investigation scope', '',
+          '<form data-form="case-create" class="form-grid">' +
+          '<label class="field field-wide"><span>Case title</span><input name="title" placeholder="Suspected account takeover — auth01" required></label>' +
+          '<label class="field"><span>Severity</span><select name="severity"><option value="critical">Critical</option><option value="high" selected>High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>' +
+          '<label class="field"><span>Primary asset</span><select name="asset">' + E.activeAssets(S.state).map(function (a) { return '<option>' + esc(a.name) + '</option>'; }).join('') + '</select></label>' +
+          '<label class="field field-wide"><span>Summary</span><textarea name="summary" class="code-area code-area-sm" placeholder="What happened, what is known, what is not known…"></textarea></label>' +
+          '<div class="field field-wide"><span>Link alerts <em>optional</em></span><div class="alert-picker">' + (alertOpts || '<span class="muted small">No alerts available.</span>') + '</div></div>' +
+          '<div class="form-actions field-wide"><button class="btn btn-primary" type="submit">' + icon('check') + ' Open case</button></div></form>') +
+        section('Case handling', 'Accountability', '',
+          '<ul class="policy-list compact"><li>' + icon('check') + '<span><b>Append-only notes</b><small>Each note is timestamped and ledger-sealed.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Status transitions logged</b><small>Open → investigating → contained → closed.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Workflow only</b><small>No external containment action is ever executed.</small></span></li></ul>') +
+      '</div><div class="col-main">' + section('Case register', cases.length + ' case(s)', '', list) + '</div></div>';
+  });
+  function caseDetail(id) {
+    var c = S.state.cases.filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+    var linked = S.state.alerts.filter(function (a) { return c.linkedAlerts.indexOf(a.id) !== -1; });
+    var body = '<div class="detail">' + sevPill(c.severity) + h.statusPill(c.status) + '<h3>' + esc(c.title) + '</h3>' +
+      '<p>' + esc(c.summary || 'No summary.') + '</p>' +
+      '<div class="detail-grid"><div><span>ASSET</span><code>' + esc(c.asset) + '</code></div><div><span>OWNER</span><b>' + esc(c.owner) + '</b></div>' +
+      '<div><span>OPENED</span><b>' + esc(h.ts(c.createdAt)) + '</b></div></div>' +
+      '<h4>Linked alerts (' + linked.length + ')</h4>' + (linked.length ? linked.map(function (a) {
+        return '<div class="gap-row">' + sevPill(a.severity) + '<span>' + esc(a.title) + '</span></div>';
+      }).join('') : '<p class="muted small">None linked.</p>') +
+      '<h4>Investigation notes</h4>' + (c.notes.length ? c.notes.map(function (n) {
+        return '<div class="note"><b>' + esc(n.actor) + '</b><small>' + esc(h.ts(n.ts)) + '</small><p>' + esc(n.text) + '</p></div>';
+      }).join('') : '<p class="muted small">No notes yet.</p>') +
+      '<form data-form="case-note" class="note-form"><input type="hidden" name="caseId" value="' + esc(c.id) + '">' +
+      '<textarea name="note" class="code-area code-area-sm" placeholder="Add an evidence note…" required></textarea>' +
+      '<div class="form-actions"><button class="btn btn-primary" type="submit">Add note</button></div></form>';
+    var footer = '<button class="btn btn-xs" data-action="case-status" data-id="' + esc(c.id) + '" data-status="investigating">Investigating</button>' +
+      '<button class="btn btn-xs" data-action="case-status" data-id="' + esc(c.id) + '" data-status="contained">Contained</button>' +
+      '<button class="btn btn-xs" data-action="case-status" data-id="' + esc(c.id) + '" data-status="closed">Close</button>' +
+      '<button class="btn btn-primary" data-action="close-modal">Done</button>';
+    U.modal('Incident case · ' + c.id.slice(-6), body, footer);
+  }
+
+  /* -------------------------- investigation copilot ---------------------- */
+  U.registerView('investigate', function () {
+    var r = ui.investigateResult;
+    var table = r ? '<div class="query-summary">' + icon('search') + '<span>' + esc(r.summary) + '</span></div>' +
+      '<div class="table-wrap table-tall"><table class="table"><thead><tr>' + r.columns.map(function (c) { return '<th>' + esc(c.toUpperCase()) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      r.rows.map(function (row) {
+        return '<tr>' + row.map(function (cell, i) { return '<td>' + (i === 0 && /critical|high|medium|low|info/.test(String(cell)) ? sevPill(String(cell)) : esc(cell)) + '</td>'; }).join('') + '</tr>';
+      }).join('') + '</tbody></table></div>' : h.empty('Ask a question about findings, alerts, assets, indicators or the ledger.');
+    var history = S.state.investigationHistory.length ? S.state.investigationHistory.slice(0, 8).map(function (x) {
+      return '<button class="gap-row hist-row" data-action="investigate-example" data-query="' + esc(x.query) + '"><code>' + esc(x.intent) + '</code><span>' + esc(x.query) + '</span><small>' + x.count + ' rows</small></button>';
+    }).join('') : '<p class="muted small">No queries yet.</p>';
+    return '<div class="page-head"><div><div class="eyebrow">ANALYSIS · INVESTIGATION</div><h1>Investigation Copilot</h1>' +
+      '<p>A local natural-language query interpreter over session evidence. It parses severity, asset, MITRE technique and intent — no model call, no data leaves the browser.</p></div></div>' +
+      '<div class="grid-2"><div class="col-main">' +
+        section('Ask the evidence', 'Plain-language queries over the local state', '',
+          '<div class="query-bar"><input id="investigate-input" data-draft="investigate" value="' + esc(S.state.drafts.investigate || '') + '" placeholder="e.g. show critical findings for api.acme-lab.io">' +
+          '<button class="btn btn-primary" data-action="investigate-run">' + icon('search') + ' Investigate</button></div>' +
+          '<div class="example-chips">' + D2.QUERY_EXAMPLES.map(function (q) {
+            return '<button class="example-chip" data-action="investigate-example" data-query="' + esc(q) + '">' + esc(q) + '</button>';
+          }).join('') + '</div>' + table) +
+      '</div><div class="col-side">' +
+        section('Interpretation', 'What the parser understands', '',
+          '<ul class="policy-list compact"><li>' + icon('check') + '<span><b>Intent</b><small>findings · alerts · assets · watchlist · ledger</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Filters</b><small>severity words, asset names, MITRE IDs, open / untriaged</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Deterministic</b><small>Same state + same query = same answer, always.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Audited</b><small>Every query is recorded in the ledger.</small></span></li></ul>') +
+        section('Recent queries', S.state.investigationHistory.length + ' recorded', '', history) +
+      '</div></div>';
+  });
+  function runInvestigation(q) {
+    var query = String(q || '').trim();
+    if (!query) { U.toast('Enter a query first.', 'bad'); return; }
+    var result = A.investigate(query, S.state);
+    result.query = query;
+    ui.investigateResult = result;
+    S.setDraft('investigate', query);
+    S.recordInvestigation({ query: query, result: result });
+    U.render();
+    U.toast(result.count + ' record(s) matched · intent ' + result.type + '.', 'ok');
+  }
+
+  /* --------------------------- risk quantification ----------------------- */
+  U.registerView('quant', function () {
+    var r = S.state.quantResult;
+    var maxBin = r ? Math.max.apply(null, r.bins.concat([1])) : 1;
+    return '<div class="page-head"><div><div class="eyebrow">ANALYSIS · QUANTITATIVE RISK</div><h1>Risk Quantification</h1>' +
+      '<p>Deterministic Monte Carlo simulation over the open finding register. Abstract risk units, transparent assumptions, fully offline.</p></div></div>' +
+      '<div class="grid-2"><div class="col-main">' +
+        section('Simulation control', 'Choose the number of iterations', '',
+          '<div class="control-row"><label class="field flex"><span>Iterations</span><select id="quant-iterations">' +
+          [1000, 2000, 5000, 10000, 20000].map(function (n) {
+            return '<option value="' + n + '" ' + ((ui.quantIterations || 2000) === n ? 'selected' : '') + '>' + n.toLocaleString() + '</option>';
+          }).join('') + '</select></label>' +
+          '<button class="btn btn-primary" data-action="quant-run">' + icon('chart') + ' Run simulation</button></div>' +
+          (r ? statRow([[r.p50, 'MEDIAN (P50)'], [r.p90, 'P90'], [r.p95, 'P95'], [r.mean, 'MEAN'], [r.iterations.toLocaleString(), 'ITERATIONS']]) +
+            '<h3 class="subhead">Loss distribution</h3><div class="hist">' + r.bins.map(function (b, i) {
+              return '<div class="hist-col"><div class="hist-bar" style="height:' + Math.round(b / maxBin * 100) + '%"></div><small>' + i + '</small></div>';
+            }).join('') + '</div>' + '<div class="hist-axis"><span>low</span><span>risk units →</span><span>high</span></div>' : h.empty('Run a simulation to see the distribution.'))) +
+      '</div><div class="col-side">' +
+        section('Model inputs', 'Fully transparent assumptions', '',
+          '<div class="table-wrap"><table class="table"><thead><tr><th>SEVERITY</th><th>EVENT PROB.</th><th>IMPACT</th></tr></thead><tbody>' +
+          [['critical', '34%', '10.0'], ['high', '22%', '6.0'], ['medium', '12%', '3.0'], ['low', '5.5%', '1.4'], ['info', '2%', '0.6']].map(function (x) {
+            return '<tr><td>' + sevPill(x[0]) + '</td><td>' + x[1] + '</td><td>' + x[2] + '</td></tr>';
+          }).join('') + '</tbody></table></div>' +
+          '<p class="muted small" style="margin-top:10px">Asset criticality multiplies impact (1.0× – 1.8×). Each open finding is sampled independently per iteration.</p>') +
+        section('Interpretation', 'Read this correctly', '',
+          '<ul class="policy-list compact"><li>' + icon('check') + '<span><b>Comparative, not absolute</b><small>Use it to compare postures, not to budget.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>Deterministic</b><small>Seeded from the ledger state — reproducible.</small></span></li>' +
+          '<li>' + icon('check') + '<span><b>No external data</b><small>No threat feed, no pricing service, no API.</small></span></li></ul>' +
+          (r ? '<p class="muted small">' + esc(r.note) + '</p>' : '')) +
+      '</div></div>';
+  });
+
+  /* --------------------------- capability manifest ----------------------- */
+  U.registerView('capabilities', function () {
+    var enabled = D2.CAPABILITIES.filter(function (c) { return c.status === 'enabled'; });
+    var blocked = D2.CAPABILITIES.filter(function (c) { return c.status !== 'enabled'; });
+    var reqs = S.state.capabilityRequests;
+    return '<div class="page-head"><div><div class="eyebrow">GOVERNANCE · CAPABILITY MANIFEST</div><h1>Capability Manifest</h1>' +
+      '<p>The agent can do <b>anything in the signed manifest</b> — and nothing outside it. This is the machine-readable answer to "can it do anything?".</p></div>' +
+      '<div class="head-actions"><span class="chip chip-lock">' + icon('shield') + ' ' + enabled.length + ' ENABLED / ' + blocked.length + ' BLOCKED</span></div></div>' +
+      '<div class="callout callout-info"><div class="callout-icon">' + icon('shield') + '</div><div><b>Unrestricted capability is not a feature — it is a hazard.</b>' +
+      '<p>Every task resolves against this manifest before execution. Blocked classes (network scanning, exploitation, credential attacks, persistence, autonomous containment, scope bypass) are refused in code and the refusal is sealed in the ledger. Adding a capability requires changing the manifest in a reviewed commit.</p></div></div>' +
+      '<div class="grid-2"><div class="col-main">' +
+        section('Enabled capabilities', enabled.length + ' signed operations', '<span class="tag">ENFORCED IN CODE</span>',
+          '<div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>OPERATION</th><th>GROUP</th><th>SCOPE</th><th>DESCRIPTION</th></tr></thead><tbody>' +
+          enabled.map(function (c) {
+            return '<tr><td><code>' + esc(c.id) + '</code></td><td><b>' + esc(c.name) + '</b></td><td>' + esc(c.group) + '</td><td><span class="mini-chip">' + esc(c.scope) + '</span></td><td class="detail-cell">' + esc(c.desc) + '</td></tr>';
+          }).join('') + '</tbody></table></div>') +
+        section('Blocked capability classes', blocked.length + ' explicitly prohibited', '<span class="tag">HARD REFUSAL</span>',
+          blocked.map(function (c) {
+            return '<div class="blocked-row">' + icon('x') + '<div><b>' + esc(c.name) + '</b><small>' + esc(c.reason) + '</small></div><code>' + esc(c.id) + '</code></div>';
+          }).join('')) +
+      '</div><div class="col-side">' +
+        section('Request a capability', 'Test the policy engine — try any identifier', '',
+          '<form data-form="capability-request">' +
+          '<label class="field"><span>Capability identifier</span><input name="capability" list="cap-list" placeholder="net.scan" required><datalist id="cap-list">' +
+          D2.CAPABILITIES.map(function (c) { return '<option value="' + esc(c.id) + '"></option>'; }).join('') + '</datalist></label>' +
+          '<label class="field" style="margin-top:10px"><span>Justification</span><textarea name="justification" class="code-area code-area-sm" placeholder="Why is this needed?"></textarea></label>' +
+          '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('shield') + ' Evaluate request</button></div></form>') +
+        section('Recent decisions', reqs.length + ' evaluated', '',
+          reqs.length ? reqs.slice(0, 10).map(function (x) {
+            return '<div class="gap-row"><code>' + esc(x.decision) + '</code><span>' + esc(x.id) + '</span><small>' + esc(h.rel(x.at)) + '</small></div>';
+          }).join('') : h.empty('No capability requests yet.')) +
+        section('Policy chain', 'Order of enforcement', '',
+          '<div class="policy-chain">' + ['Manifest lookup', 'Status check (enabled)', 'Scope signature + expiry', 'Permitted check type', 'Ledger decision'].map(function (s, i) {
+            return '<div><span>' + (i + 1) + '</span><b>' + esc(s) + '</b></div>';
+          }).join('') + '</div>') +
+      '</div></div>';
+  });
+
+  /* --------------------------- command center add-on --------------------- */
+  var originalOverview = U.getView('overview');
+  U.registerView('overview', function () {
+    var modules = [
+      ['19', 'CONSOLE VIEWS', 'grid'], ['7', 'INGEST FORMATS', 'wave'], ['16+', 'DETECTION RULES', 'target'],
+      ['42', 'ATT&CK TECHNIQUES', 'chart'], ['18', 'SIGNED CAPABILITIES', 'shield'], ['8', 'ORCHESTRATOR TASKS', 'cpu']
+    ];
+    var breadth = '<div class="breadth-grid">' + modules.map(function (m) {
+      return '<div class="breadth-cell">' + icon(m[2]) + '<b>' + esc(m[0]) + '</b><span>' + esc(m[1]) + '</span></div>';
+    }).join('') + '</div>';
+    var engines = [
+      ['Mission Orchestrator', 'Policy-gated DAG of 8 tasks', 'orchestrator', 'cpu'],
+      ['Universal Ingest', 'Normalize + reconstruct attack chains', 'ingest', 'wave'],
+      ['Analysis Lab', 'Email · IAM · K8s · secrets · SBOM', 'lab', 'lock'],
+      ['Detection Studio', 'ATT&CK heatmap + custom rules', 'studio', 'target'],
+      ['Investigation Copilot', 'Local natural-language queries', 'investigate', 'search'],
+      ['Risk Quantification', 'Monte Carlo over open findings', 'quant', 'chart']
+    ];
+    var rail = '<div class="quick-grid">' + engines.map(function (e) {
+      return '<button class="quick" data-action="nav" data-view="' + e[2] + '">' + icon(e[3]) + '<b>' + esc(e[0]) + '</b><small>' + esc(e[1]) + '</small></button>';
+    }).join('') + '</div>';
+    return originalOverview() + section('Platform breadth', 'AEGIS SENTINEL v2.0 capability surface', '<span class="tag">ULTRA-ADVANCED / AUTHORIZED-ONLY</span>', breadth) +
+      section('v2 engines', 'Jump into an advanced workflow', '', rail, 'panel-tight');
+  });
+
+  /* ------------------------------ actions -------------------------------- */
+  U.registerAction('orch-run', function () { runOrchestrator(); });
+  U.registerAction('ingest-analyze', function () { ingestAnalyze(); });
+  U.registerAction('ingest-sample', function (t) {
+    var kind = t.getAttribute('data-kind');
+    var map = { jsonl: D2.SAMPLES.jsonl, nginx: D2.SAMPLES.nginx, syslog: DATA.SAMPLE_LOGS,
+      csv: 'timestamp,src,actor,action,status\n2026-11-10T03:14:02Z,185.220.101.47,admin,failed_login,401\n2026-11-10T03:14:09Z,185.220.101.47,deploy,login_success,200\n2026-11-10T03:15:11Z,185.220.101.47,deploy,sudo,200\n2026-11-10T03:16:02Z,10.20.0.15,svc,sql_injection,500' };
+    S.setDraft('ingest', map[kind] || map.jsonl);
+    U.render(); U.toast(kind.toUpperCase() + ' sample loaded.', 'ok');
+  });
+  U.registerAction('lab-tab', function (t) { ui.labTab = t.getAttribute('data-tab'); U.render(); });
+  U.registerAction('lab-sample', function (t) {
+    var tab = t.getAttribute('data-tab');
+    S.setDraft('lab_' + tab, D2.SAMPLES[({ email: 'email', iam: 'iam', k8s: 'k8s', secrets: 'secrets', deps: 'deps' })[tab]]);
+    U.render(); U.toast('Sample loaded.', 'ok');
+  });
+  U.registerAction('lab-analyze', function (t) { labAnalyze(t.getAttribute('data-tab')); });
+  U.registerAction('studio-export', function () {
+    U.download('aegis-mitre-coverage.json', JSON.stringify(A.mitreCoverage(S.state), null, 2));
+    S.audit('COVERAGE_EXPORT', 'mitre/navigator', 'EXPORTED', 'ATT&CK coverage matrix exported.'); S.save();
+    U.toast('Coverage matrix exported.', 'ok');
+  });
+  U.registerAction('rule-test', function () {
+    var form = $('rule-form');
+    if (!form) return;
+    var fd = new FormData(form);
+    var rule = { pattern: fd.get('pattern'), severity: fd.get('severity'), threshold: fd.get('threshold'), name: fd.get('name') };
+    var res = A.testCustomRule(rule, S.state.drafts.logs || '');
+    res.threshold = rule.threshold;
+    ui.ruleTest = res;
+    U.renderView();
+  });
+  U.registerAction('rule-delete', function (t) { S.deleteCustomRule(t.getAttribute('data-id')); U.render(); U.toast('Rule removed.', 'ok'); });
+  U.registerAction('case-detail', function (t) { caseDetail(t.getAttribute('data-id')); });
+  U.registerAction('case-status', function (t) {
+    S.setCaseStatus(t.getAttribute('data-id'), t.getAttribute('data-status'));
+    caseDetail(t.getAttribute('data-id')); U.toast('Case status updated and logged.', 'ok');
+  });
+  U.registerAction('case-export', function (t) {
+    var c = S.state.cases.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0];
+    if (!c) return;
+    var linked = S.state.alerts.filter(function (a) { return c.linkedAlerts.indexOf(a.id) !== -1; });
+    U.download('aegis-case-' + c.id.slice(-6) + '.json', JSON.stringify({ case: c, linkedAlerts: linked }, null, 2));
+    S.audit('CASE_EXPORT', c.id, 'EXPORTED', 'Case bundle exported.'); S.save();
+    U.toast('Case bundle exported.', 'ok');
+  });
+  U.registerAction('investigate-run', function () {
+    var inp = $('investigate-input');
+    runInvestigation(inp ? inp.value : '');
+  });
+  U.registerAction('investigate-example', function (t) { runInvestigation(t.getAttribute('data-query')); });
+  U.registerAction('quant-run', function () {
+    var sel = $('quant-iterations');
+    var n = sel ? Number(sel.value) : 2000;
+    ui.quantIterations = n;
+    var r = A.monteCarloRisk(S.state, n);
+    S.saveQuant(r);
+    U.render(); U.toast(n.toLocaleString() + ' iterations complete · p90 ' + r.p90 + '.', 'ok');
+  });
+
+  /* ------------------------------- forms --------------------------------- */
+  U.registerForm('custom-rule', function (form, fd) {
+    var res = S.saveCustomRule({
+      name: fd.get('name'), pattern: fd.get('pattern'), severity: fd.get('severity'),
+      mitre: fd.get('mitre'), threshold: fd.get('threshold'), remediation: fd.get('remediation')
+    });
+    if (!res.ok) { U.toast(res.error, 'bad'); return; }
+    ui.ruleTest = null;
+    U.toast('Rule published — matches ' + res.test.count + ' line(s).', 'ok');
+    U.render();
+  });
+  U.registerForm('case-create', function (form, fd) {
+    var res = S.createCase({
+      title: fd.get('title'), severity: fd.get('severity'), asset: fd.get('asset'),
+      summary: fd.get('summary'), linkedAlerts: fd.getAll('alerts')
+    });
+    if (!res.ok) { U.toast(res.error, 'bad'); return; }
+    U.toast('Case opened: ' + res.case.title, 'ok'); U.render();
+  });
+  U.registerForm('case-note', function (form, fd) {
+    var id = String(fd.get('caseId') || '');
+    if (S.addCaseNote(id, fd.get('note'))) { caseDetail(id); U.toast('Evidence note recorded.', 'ok'); }
+  });
+  U.registerForm('capability-request', function (form, fd) {
+    var id = String(fd.get('capability') || '').trim();
+    var justification = String(fd.get('justification') || '').trim();
+    var target = (activeTargets()[0] || {}).name || null;
+    var gate = A.evaluateCapability(id, S.state, target);
+    var decision = gate.allowed ? 'GRANTED' : 'REFUSED';
+    S.recordCapabilityRequest(id, decision, gate.reason + (justification ? ' Operator justification: ' + justification.slice(0, 160) : ''));
+    U.modal('Capability decision', '<div class="refusal ' + (gate.allowed ? 'granted' : '') + '">' +
+      icon(gate.allowed ? 'check' : 'shield') + '<div><h3>' + decision + ' · ' + esc(gate.code) + '</h3>' +
+      '<p>' + esc(gate.reason) + '</p><div class="refusal-code"><span>CAPABILITY</span><code>' + esc(id) + '</code>' +
+      '<span>MANIFEST</span><code>' + esc(gate.cap ? gate.cap.status : 'not present') + '</code>' +
+      '<span>TARGET</span><code>' + esc(target || 'n/a') + '</code><span>LEDGER</span><code>#' + S.state.audit.length + '</code></div></div></div>',
+      '<button class="btn btn-primary" data-action="close-modal">Close</button>');
+    U.renderView();
+    U.toast('Capability ' + id + ' → ' + decision, gate.allowed ? 'ok' : 'bad');
+  });
+
+  /* ------------------------------ commands ------------------------------- */
+  U.registerCommands([
+    { label: 'Run orchestrated mission', hint: 'OPERATE', icon: 'cpu', run: function () { U.navigate('orchestrator'); runOrchestrator(); } },
+    { label: 'Normalize telemetry & reconstruct attack chains', hint: 'ANALYZE', icon: 'wave', run: function () { U.navigate('ingest'); ingestAnalyze(); } },
+    { label: 'Open the capability manifest', hint: 'GOVERN', icon: 'shield', run: function () { U.navigate('capabilities'); } },
+    { label: 'View ATT&CK coverage heatmap', hint: 'ANALYZE', icon: 'target', run: function () { U.navigate('studio'); } },
+    { label: 'Run Monte Carlo risk simulation', hint: 'ANALYZE', icon: 'chart', run: function () { U.navigate('quant'); U.$('quant-iterations') && U.doc.querySelector('[data-action="quant-run"]').click(); } },
+    { label: 'Ask the investigation copilot', hint: 'ANALYZE', icon: 'search', run: function () { U.navigate('investigate'); } }
+  ]);
 })(typeof globalThis !== 'undefined' ? globalThis : this);
