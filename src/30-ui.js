@@ -46,7 +46,8 @@
     check: 'M4 12l5 5L20 6',
     x: 'M5 5l14 14M19 5L5 19',
     clock: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l4 2',
-    bolt: 'M13 2L4 14h6l-1 8 9-12h-6z'
+    bolt: 'M13 2L4 14h6l-1 8 9-12h-6z',
+    terminal: 'M3 4h18v16H3zM6 8l3 3-3 3M12 15h6'
   };
   function icon(name, cls) {
     return '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICONS[name] || ICONS.grid) + '"/></svg>';
@@ -164,7 +165,7 @@
         '<div class="side-foot"><div class="scope-mini"><div class="scope-mini-head"><span>AUTHORIZATION BOUNDARY</span><b>' + active + '/' + s.assets.length + '</b></div>' +
           '<div class="scope-track"><span style="width:' + Math.round(active / (s.assets.length || 1) * 100) + '%"></span></div>' +
           '<small>' + esc(s.settings.operator) + ' · local session</small></div>' +
-          '<div class="build">v2.0.0 · 19 modules · <span>NO NETWORK EGRESS</span></div></div>' +
+          '<div class="build">v2.1.0 · 9 modules · 20 views · <span>NO NETWORK EGRESS</span></div></div>' +
       '</aside>' +
       '<div class="workspace"><header class="topbar">' +
         '<div class="crumbs"><span>WORKSPACE</span><b>/</b><strong>' + esc(VIEWS[ui.view].label) + '</strong></div>' +
