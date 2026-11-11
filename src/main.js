@@ -1,5 +1,7 @@
 import { Wllama } from '@wllama/wllama';
 import wasmUrl from '@wllama/wllama/esm/wasm/wllama.wasm?url';
+import compatWasmUrl from '@wllama/wllama-compat/wasm/wllama.wasm?url';
+import compatWorker from '@wllama/wllama-compat/wasm/wllama.js?raw';
 import './style.css';
 
 const icon = (name) => ({spark:'✳', plus:'+', arrow:'↗', chat:'▤', box:'▧', settings:'⚙', lock:'◇', cpu:'▦'}[name]);
@@ -21,16 +23,19 @@ async function loadModel(source, name) {
  try {
    if(engine) { await engine.exit(); engine = null; }
    const next = new Wllama({default: wasmUrl});
+   // Self-host the fallback runtime rather than depending on a third-party CDN.
+   next.setCompat({wasm: compatWasmUrl, worker: {code: compatWorker}}, 'firefox_safari');
+   const options = { n_gpu_layers: 0, n_ctx: 1024 }; // CPU is slower, but avoids GPU allocation/driver failures. 
    try {
-    if (typeof source === 'string') await next.loadModelFromUrl(source, { progressCallback: ({loaded,total}) => { $('loadStatus').textContent = total ? `Downloading model… ${Math.round(loaded/total*100)}%` : 'Downloading model…'; } });
-    else await next.loadModel(source);
-   } catch (err) { await next.exit().catch(() => {}); throw err; }
+    if (typeof source === 'string') await next.loadModelFromUrl(source, { ...options, progressCallback: ({loaded,total}) => { $('loadStatus').textContent = total && loaded >= total ? 'Download complete. Initializing model on your device… this may take several minutes.' : total ? `Downloading model… ${Math.round(loaded/total*100)}%` : `Downloading model… ${Math.round(loaded/1024/1024)} MB`; } });
+    else { $('loadStatus').textContent = 'Initializing model on your device… this may take several minutes.'; await next.loadModel(source, options); }
+   } catch (err) { void next.exit().catch(() => {}); throw err; }
    engine = next; loadedName = name; messages = []; $('messages').replaceChildren(); $('messages').hidden = true; $('welcome').hidden = false;
    $('loadStatus').textContent = `Ready · ${name}`; $('headerModelName').textContent = name; $('composerStatus').textContent = `◈  ${name}`; $('prompt').placeholder = 'Ask anything, or just start typing...'; view('chat');
  } catch(err) { $('loadStatus').textContent = `Could not load model: ${err.message || err}. Check the file, available memory, or URL/CORS settings.`; $('headerModelName').textContent = 'No model loaded'; $('composerStatus').textContent = '◈  Load a model to get started'; }
  finally { setBusy(false); }
 }
-$('fileInput').onchange = e => { const files = [...e.target.files]; if (files.length) loadModel(files, files[0].name); e.target.value = ''; };
+$('fileInput').onchange = e => { const files = [...e.target.files]; if (files.length && files.every(f => f.name.toLowerCase().endsWith('.gguf'))) loadModel(files, files[0].name); else if (files.length) $('loadStatus').textContent = 'Please select GGUF files. ONNX is not supported yet.'; e.target.value = ''; };
 const drop = $('dropzone'); ['dragenter','dragover'].forEach(evt => drop.addEventListener(evt,e=>{e.preventDefault(); drop.classList.add('drag');})); ['dragleave','drop'].forEach(evt => drop.addEventListener(evt,e=>{e.preventDefault(); drop.classList.remove('drag');})); drop.addEventListener('drop',e=>{ const files = [...e.dataTransfer.files]; if (!files.length) return; if(files.some(f=>!f.name.toLowerCase().endsWith('.gguf'))) { $('loadStatus').textContent = 'Please select GGUF files. ONNX is not supported yet.'; return; } loadModel(files, files[0].name); });
 $('urlForm').onsubmit = e => {e.preventDefault(); const url = $('modelUrl').value.trim(); try { const u = new URL(url); if (!['https:','http:'].includes(u.protocol)) throw Error(); loadModel(url, decodeURIComponent(u.pathname.split('/').pop()) || 'URL model'); } catch { $('loadStatus').textContent = 'Enter a valid HTTP(S) model URL.'; }};
 function addMessage(role, text) { const el = document.createElement('div'); el.className = `message ${role}`; const label = document.createElement('div'); label.className='message-label'; label.textContent = role === 'user' ? 'YOU' : '✳  OFFGRID'; const body = document.createElement('div'); body.className='message-body'; body.textContent=text; el.append(label,body); $('messages').append(el); el.scrollIntoView({behavior:'smooth',block:'end'}); return body; }
